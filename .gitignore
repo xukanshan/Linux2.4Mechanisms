@@ -1,8 +1,0 @@
-# 忽略所有的.log文件
-*.log
-
-# 忽略hd.img
-hd.img
-
-# 忽略hdisk目录
-hdisk/
