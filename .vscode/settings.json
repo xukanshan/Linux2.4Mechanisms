@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "types.h": "c",
-        "init.h": "c",
-        "gdt.h": "c",
-        "multiboot.h": "c"
-    }
-}
