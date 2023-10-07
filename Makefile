@@ -1,15 +1,23 @@
-BUILD_DIR = ./build
+#请根据自己的环境，修改qemu与debug下的qemu执行路径
+
 C_SOURCES = $(shell find . -name "*.c")
 #find命令在当前目录和其子目录中查找所有扩展名为.c的C源文件。然后，将这些文件的完整路径存放在C_SOURCES变量中
-C_OBJECTS = $(patsubst %.c, %.o, $(C_SOURCES))
-#patsubst函数将C_SOURCES中所有的.c文件转换为.o对象文件。也就是说，它将每个.c文件的路径更改为对应的.o文件路径
+
+C_OBJECTS = $(patsubst ./%, build/%, $(C_SOURCES:.c=.o))
+#$(C_SOURCES:.c=.o) 遍历$(C_SOURCES)列表中的每个条目。对于每个条目，如果它的末尾是.c，则将.c替换为.o。
+#patsubst是一个模式替换功能，它接受三个参数。前两个参数定义了要查找的模式和要替换的模式。
+#第三个参数是输入列表。它遍历输入列表中的每个条目。
+#对于每个条目，如果它匹配第一个模式（在这里是./%），那么它将该条目替换为第二个模式（在这里是build/%），
+#其中%是通配符，它可以匹配任意字符串，并在替换中使用相同的值。
+#其结果是将所有路径前的./替换为build/，这样我们就得到了正确的输出目录。
+
 S_SOURCES = $(shell find . -name "*.S")
-S_OBJECTS = $(patsubst %.S, %.o, $(S_SOURCES))
+S_OBJECTS = $(patsubst ./%, build/%, $(S_SOURCES:.S=.o))
 
 CC = gcc
 LD = ld
 ASM = nasm
-LIB = -I ./include/ -I ./arch/i386/include
+LIB =
 
 C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -Wmissing-prototypes -c -fno-builtin -m32 -fno-stack-protector -nostdinc -fno-pic -gdwarf-2
 #-Wall:开启编译器的大多数常用警告。这是推荐的一个参数，因为它会帮助开发者识别出代码中的常见问题。
@@ -43,24 +51,30 @@ LD_FLAGS = -m elf_i386 -T ./script/kernel.ld -Map ./build/kernel.map -nostdlib
 
 all: $(S_OBJECTS) $(C_OBJECTS) link update_image
 
-.c.o:
+build/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(C_FLAGS) -o $@ $<
-#.c.o: 这定义了一个规则，它告诉make如何从.c文件（C源文件）生成.o文件（对象文件）。换句话说，这个规则描述了如何编译C源文件。
-#@echo 编译代码文件 $< ... 这是一个命令，它会在终端中打印消息“编译代码文件”后面跟着当前处理的.c文件的名称。
-#在make规则中，特殊的变量 $< 指代当前规则的第一个依赖，也就是当前要编译的.c文件。这里的...是一个视觉效果，就是显示三个点
+#build/%.o: %.c: 这定义了一个规则，它告诉make如何从.c文件（C源文件）生成build/.o文件（对象文件）。换句话说，这个规则描述了如何编译C源文件。
+#mkdir: 用于创建目录。-p: 是 mkdir 的一个选项，它的功能是确保父目录存在。
+#如果父目录已经存在，它不会报错。如果不存在，它会创建所需的父目录。
+#例如，mkdir -p build/arch/i386 会创建 build, bulid/arch, 和 build/arch/i386 三个目录。
+#$(dir ...)：是一个 Makefile 函数，它返回给定文件的目录部分。
+#例如，$(dir build/arch/i386/grub_head.o) 返回 build/arch/i386/。
+#$@: 是一个 Makefile 的自动变量，它代表当前目标的文件名。这里，它表示的是 build/.../*.o 文件的路径。
+#$< 指代当前规则的第一个依赖，也就是当前要编译的.c文件。
 
-
-.S.o:
+build/%.o: %.S
+	@mkdir -p $(dir $@)
 	$(CC) $(C_FLAGS) -o $@ $<
-#.c.o 和 .S.o 这样的规则被称为“隐含规则”或“模式规则”。
+#build/%.o: %.c 和 build/%.o: %.S这样的规则被称为模式规则。
 #它们为构建过程提供了一种高效的方式，使得在常见的文件转换或构建任务中，这样就不必为每个文件明确写出详细的规则。
 
 link:
-	$(LD) $(LD_FLAGS) -o kernel.bin $(S_OBJECTS) $(C_OBJECTS) 
+	$(LD) $(LD_FLAGS) -o build/kernel.bin $(S_OBJECTS) $(C_OBJECTS) 
 
 .PHONY:clean
 clean:
-	$(RM) $(S_OBJECTS) $(C_OBJECTS) kernel.bin
+	$(RM) -r build
 
 .PHONY:update_image
 update_image:
