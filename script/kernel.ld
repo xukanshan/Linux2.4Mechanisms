@@ -8,7 +8,7 @@
                                                 *      简单起见，我们把和 .data 段放在一起好了。
                                                 */
 
-ENTRY(grub_head_to_startup_32)                  /* 设置入口点为grub_head_to_startup_32函数 */
+ENTRY(grub_head)                  /* 设置入口点为grub_head_to_startup_32函数 */
 SECTIONS                                        /* SECTIONS块定义了输出文件的段组织布局 */ 
 {	
     . = 0x100000;                               /* 设置当前位置为0x100000。在链接脚本中.表示当前位置，它决定了下一个段在输出文件中的位置。*/

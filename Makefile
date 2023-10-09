@@ -17,7 +17,7 @@ S_OBJECTS = $(patsubst ./%, build/%, $(S_SOURCES:.S=.o))
 CC = gcc
 LD = ld
 ASM = nasm
-LIB =
+LIB =-I ./include/
 
 C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -Wmissing-prototypes -c -fno-builtin -m32 -fno-stack-protector -nostdinc -fno-pic -gdwarf-2
 #-Wall:开启编译器的大多数常用警告。这是推荐的一个参数，因为它会帮助开发者识别出代码中的常见问题。
@@ -78,7 +78,7 @@ clean:
 
 .PHONY:update_image
 update_image:
-	sudo cp kernel.bin ./hdisk/boot/
+	sudo cp ./build/kernel.bin ./hdisk/boot/
 	@echo OK! ALL DONE!
 
 .PHONY:mount_image
