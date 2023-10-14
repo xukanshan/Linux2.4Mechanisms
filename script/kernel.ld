@@ -8,7 +8,7 @@
                                                 *      简单起见，我们把和 .data 段放在一起好了。
                                                 */
 
-ENTRY(grub_head)                  /* 设置入口点为grub_head_to_startup_32函数 */
+ENTRY(grub_head)                                /* 设置入口点为grub_head_to_startup_32函数 */
 SECTIONS                                        /* SECTIONS块定义了输出文件的段组织布局 */ 
 {	
     . = 0x100000;                               /* 设置当前位置为0x100000。在链接脚本中.表示当前位置，它决定了下一个段在输出文件中的位置。*/
@@ -22,33 +22,32 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 	{
 		*(.grub_head_code)
 	}
+    . = ALIGN(4096);                            /*当前位置向前增长到4096的倍数，所以下一个段就是4KB对齐了，相当于我们预留了4KB空间给grub引导头*/
     . += 0xC0000000;                            /* 当前位置计数器增加0xC0000000, 仿照linux2.4, 内核编译地址在3G以上 */
-    .text.init : AT(ADDR(.text.init) - 0xC0000000)  /* 指定加载地址为链接地址 - 3G, 否则加载地址就是链接地址 */
-	{
-		*(.text.init)
-		. = ALIGN(4096);                        /*当前位置向前增长到4096的倍数，所以下一个段就是4KB对齐了*/
-	}
-	.data.init : AT(ADDR(.text.init) - 0xC0000000)
-	{
-		*(.data.init)
-		. = ALIGN(4096);
-	}
-	.text : AT(ADDR(.text) - 0xC0000000)
+    .text : AT(ADDR(.text) - 0xC0000000)        /* 指定加载地址为链接地址 - 3G, 否则加载地址就是链接地址 */
 	{
 		*(.text)
-		. = ALIGN(4096);
+		. = ALIGN(4096);                        
 	}
+    .data.init_task : AT(ADDR(.data.init_task) - 0xC0000000)    
+    {
+        *(.data.init_task)
+                                                /* 这个段对应init_task_union变量，本就是8K大小，结束地址不对齐也可。 */
+    }                                           /* 这里如果设定了结束地址8K对齐，那么这个这个段的起始地址也必须8K对齐，否则grub会报error: overlap detected */
+                                                /* 换句话说，这个结束地址8K对齐决定了前一个段的结束地址也必须8K对齐 */
 	.data : AT(ADDR(.data) - 0xC0000000)
 	{
 		*(.data)
 		*(.rodata)
 		. = ALIGN(4096);
 	}
+    PROVIDE( __bss_start = . );
 	.bss : AT(ADDR(.bss) - 0xC0000000)
 	{
 		*(.bss)
 		. = ALIGN(4096);
 	}
+    PROVIDE( _end = . );
 	                                            /* .stab和.stabstr是与调试相关的段。在UNIX和类UNIX系统中，*/
                                                 /* 这两个段通常用于存储符号表(.stab)和与符号表条目关联的字符串(.stabstr)。*/
                                                 /* 这是一个旧式的调试格式，特别是与GNU的gdb调试器配合使用。*/
@@ -64,7 +63,7 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 		*(.stabstr)
 	 	. = ALIGN(4096);
 	}
-	PROVIDE( _end = . );
+	
 
 	/DISCARD/ : { *(.comment) *(.eh_frame) }    /* 用于指定链接器应该从最终的输出文件中丢弃哪些段 */
 }                                               /* .comment：这个段包含了编译器、链接器或其他工具可能添加的注释或版本信息。这些信息对于执行程序通常不是必要的 */
