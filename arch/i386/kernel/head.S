@@ -83,19 +83,73 @@ startup_32:
 1:
     lss stack_start, %esp                   /* 加载stack_start处准备好的esp与ss，此指令会将从内存地址 stack_start 处取得的 32 位值加载到 esp，
                                             并将从 stack_start + 4 地址处取得的值加载到 ss。为创建第一个进程做准备 */
-	           
+	
+    xorl %eax, %eax                         /* 清空代码中的bss段（未初始化的全局变量），防止意外发生 */
+	movl $SYMBOL_NAME(__bss_start), %edi    /* __bss_start由链接脚本提供 */
+	movl $SYMBOL_NAME(_end), %ecx           /* _end由链接脚本提供 */
+	subl %edi, %ecx
+	rep
+	stosb                                            
+
+    call setup_idt                          /* 初始化idt表 */           
     
     movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
     movl $0x07580758, (%eax)            
 stop:
 	jmp stop
 
+/* 设置idt表内所有256个中断门描述符指向同一个函数, 但现在并不会加载idt表，
+只有在分页直接打开后，并且内核运行在3G以上以后才会加载。并且也不会去开中断*/
+setup_idt:
+                                            /* 开始拼凑中断门描述符 */
+	lea ignore_int, %edx                    /* 准备默认中断处理函数的地址 */
+	movl $(__KERNEL_CS << 16), %eax         /* 准备代码段的选择子 */
+	movw %dx, %ax		                    /* 现在eax中就是中断门描述符的低4字节，包括代码段选择子（高2字节）与函数地址（低2字节） */
+	movw $0x8E00, %dx	                    /* dx现在是中断门描述符高4字节的低2字节，存在，dpl = 0，类型111。edx高16位已经是函数地址的高2字节了 */
+	lea SYMBOL_NAME(idt_table), %edi        /* 加载idt表的地址, 定义在trap.c中 */
+	mov $256, %ecx                          /* 设定循环次数 */
+rp_sidt:
+	movl %eax, (%edi)                       /* 设定中断门描述符的低4字节 */
+	movl %edx, 4(%edi)                      /* 设定中断门描述符的高4字节 */
+	addl $8, %edi                           /* 设定下一个要设定的中断门描述符地址，一个中断门描述符是8B */
+	dec %ecx                                /* 循环次数-1 */
+	jne rp_sidt                             /* 没有循环完就继续循环 */
+	ret
+
 ENTRY(stack_start)                          
 	.long SYMBOL_NAME(init_task_union)+8192 /* esp为init_task_union（swapper的pcb结构体） + 8K的位置 */
 	.long __KERNEL_DS                       /* ss为内核数据段选择子 */
                                             /*尽管我们没有包含头文件或者链接脚本声明符号来显式地声明init_task_union，
                                             但在链接阶段，链接器会尝试解析所有未解析的符号引用，查找所有的目标文件和库来解决这些引用。*/
-                                            
+
+/* 以下是默认的中断处理函数，就是保存现场，然后压入字符串地址后去call prink打印出来 */
+int_msg:
+	.asciz "Unknown interrupt\n"
+	ALIGN
+ignore_int:
+	cld
+	pushl %eax
+	pushl %ecx
+	pushl %edx
+	pushl %es
+	pushl %ds
+
+	movl $(__KERNEL_DS), %eax
+	movl %eax, %ds
+	movl %eax, %es
+	pushl $int_msg
+    //call SYMBOL_NAME(printk)              /* 暂未实现printk函数 */
+
+	popl %eax                               /* 丢弃压入的字符串地址 */
+
+	popl %ds
+	popl %es
+	popl %edx
+	popl %ecx
+	popl %eax
+	iret
+
+
 
                                             /* 由于startup_32会被放到101000位置, 所以swapper_pg_dir(内核用页目录表)会被放到102000位置 */
 .org 0x1000                                 /* 其实不应该.text内跟数据，但这种做法是为对内存布局精确控制 */

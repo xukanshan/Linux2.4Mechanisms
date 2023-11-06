@@ -91,7 +91,7 @@ umount_image:
 
 .PHONY:qemu
 qemu:
-	../installment/qemu-8.1.0/build/qemu-system-x86_64 -serial stdio -drive file=./hd.img,format=raw,index=0,media=disk -m 512 -device VGA
+	qemu-system-x86_64 -serial stdio -drive file=./hd.img,format=raw,index=0,media=disk -m 512 -device VGA
 #-serial stdio：这告诉QEMU将虚拟机的串行端口输出重定向到主机的标准输入/输出（通常是你的终端或命令行窗口）。
 #这允许你从虚拟机接收文本输出并向其发送输入。
 #-drive file=./hd.img,format=raw,index=0,media=disk：这告诉QEMU你想连接一个虚拟硬盘，并给出了硬盘的详细信息。
@@ -106,6 +106,6 @@ qemu:
 
 .PHONY:debug
 debug:
-	../installment/qemu-8.1.0/build/qemu-system-x86_64 -serial stdio -S -s -drive file=./hd.img,format=raw,index=0,media=disk -m 512
+	qemu-system-x86_64 -serial stdio -S -s -drive file=./hd.img,format=raw,index=0,media=disk -m 512
 #-S：这使得QEMU在启动时不会自动开始模拟。它会暂停，等待一个调试器连接或接收到一个继续执行的命令。
 #-s：这是一个便捷选项，等同于 -gdb tcp::1234。它告诉QEMU在TCP端口1234上监听GDB调试器的连接。这允许你使用GDB调试你在QEMU中运行的代码
