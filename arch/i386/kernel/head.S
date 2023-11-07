@@ -96,6 +96,10 @@ startup_32:
 	pushl $0								/* 初始化eflags */
 	popfl           						/* 执行完毕之后，eflags并不会是0，因为其第二位固定为1，所以eflags整个的值是2 */
     
+	lgdt gdt_descr							/* 重新加载gdtr。重新加载的意义在于，Linux2.4原来的gdt表在setup中，而这部分随着内核启动会被抛弃！
+											所以要使用新的在内核中的gdt表。对于我们来说，原有的gdt表由grub提供，重新加载是为了让我们的内核来控制gdt表，
+											使之随时可修改，更可控 */
+	
     movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
     movl $0x07580758, (%eax)            
 stop:
@@ -152,6 +156,11 @@ ignore_int:
 	popl %eax
 	iret
 
+gdt_descr:									/* 定义加载进入gdtr的数据 */
+	.word GDT_ENTRIES * 8 - 1				/* 前2字节，gdt表界限，为gdt表大小-1 */
+SYMBOL_NAME(gdt):							
+	.long SYMBOL_NAME(gdt_table)			/* 后4字节，gdt表的位置 */
+
 
 
                                             /* 由于startup_32会被放到101000位置, 所以swapper_pg_dir(内核用页目录表)会被放到102000位置 */
@@ -172,4 +181,16 @@ ENTRY(pg0)                                  /* 内核使用的临时页表，映
 ENTRY(pg1)                                  /* 内核使用的临时页表，映射4-8M物理地址 */
 
 .org 0x4000                                 /* 全0页 */        
-ENTRY(empty_zero_page)                      
+ENTRY(empty_zero_page)
+
+.data										/* 数据段从这里开始之前很多属于数据段的内容放到了代码段，是为了对内存布局精确控制 */
+ALIGN
+ENTRY(gdt_table)
+	.quad 0x0000000000000000				/* 防止段寄存器未设置时选用此段描述符，所以不设置，选用时会报错 */
+	.quad 0x0000000000000000				/* 不知道Linux2.4为什么不用这个 */
+	.quad 0x00cf9a000000ffff				/* 0x10 内核 4GB 代码 起始 0x00000000 */
+	.quad 0x00cf92000000ffff				/* 0x18 内核 4GB 数据 起始 0x00000000 */
+	.quad 0x00cffa000000ffff				/* 0x23 用户 4GB 代码 起始 0x00000000 */
+	.quad 0x00cff2000000ffff				/* 0x2b 用户 4GB 数据 起始 0x00000000 */
+	.quad 0x0000000000000000				/* 未使用 */
+	.quad 0x0000000000000000				/* 未使用 */
