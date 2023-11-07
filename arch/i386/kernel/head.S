@@ -91,7 +91,10 @@ startup_32:
 	rep
 	stosb                                            
 
-    call setup_idt                          /* 初始化idt表 */           
+    call setup_idt                          /* 初始化idt表 */
+
+	pushl $0								/* 初始化eflags */
+	popfl           						/* 执行完毕之后，eflags并不会是0，因为其第二位固定为1，所以eflags整个的值是2 */
     
     movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
     movl $0x07580758, (%eax)            
