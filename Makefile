@@ -40,6 +40,14 @@ C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -Wmissing-prototypes -c -fno-built
 #如果要在其他地址执行，需要对其进行重定位。但是，位置独立代码也有其开销。为了减少代码的大小和复杂性，或者为了最大化性能，开发人员可能会选择不使用PIC。
 #-gdwarf-2 生成用于调试的DWARF 2格式的信息。这对于使用GDB或其他调试工具进行调试非常有用。DWARF 是一种用于表示程序调试信息的标准
 
+ASM_FLAGS = $(LIB) -c -fno-builtin -m32 -gdwarf-2 -D__ASSEMBLY__ -fno-stack-protector -nostdinc -fno-pic  
+#虽然编译汇编也是用的gcc编译器，但是相比于C_FLAGS，ASM_FLAGS少了-Wall（因为这些选项是为C编译器设计的） 
+#少了-Wstrict-prototypes -Wmissing-prototypes （这两个是为C函数原型设计的）
+#多了-D__ASSEMBLY__ -D：这个选项告诉GCC定义一个宏，其后紧跟宏的名称
+#这个宏会被定义为1。它等同于在源代码的最开始添加了#define __ASSEMBLY__ 1这一行
+#这么做是因为Linux2.4中，S代码和c代码使用了同样的头文件，但是头文件中有些特性（如结构体）定义S代码无法识别，
+#所以这些定义需要用ifndf包裹起来，然后编译S与编译c使用不用的参数，就可以实现c识别这些头文件定义，但是S不识别
+
 LD_FLAGS = -m elf_i386 -T ./script/kernel.ld -Map ./build/kernel.map -nostdlib
 #-m elf_i386：这告诉链接器生成的目标代码格式是 ELF（可执行和链接格式），并且是针对 i386（32位Intel x86）架构的。
 #-T ./script/kernel.ld：-T 选项允许你指定一个链接器脚本。链接器脚本用于控制输出二进制文件的布局和其他链接时的行为。
@@ -65,7 +73,7 @@ build/%.o: %.c
 
 build/%.o: %.S
 	@mkdir -p $(dir $@)
-	$(CC) $(C_FLAGS) -o $@ $<
+	$(CC) $(ASM_FLAGS) -o $@ $<
 #build/%.o: %.c 和 build/%.o: %.S这样的规则被称为模式规则。
 #它们为构建过程提供了一种高效的方式，使得在常见的文件转换或构建任务中，这样就不必为每个文件明确写出详细的规则。
 

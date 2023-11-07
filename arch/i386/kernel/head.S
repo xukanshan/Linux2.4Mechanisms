@@ -54,6 +54,8 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
 #include <asm-i386/segment.h>
 #include <asm-i386/page.h>
 #include <asm-i386/pagetable.h>
+#include <asm-i386/desc.h>
+#include <linux/threads.h>
 startup_32:
 	cld                                     /* 设定df，但没有必要，因为grub引导已经设定好 */
 	movl $(__KERNEL_DS), %eax               /* 设定除了cs以外所有段寄存器为内核数据段选择子，但没有必要，因为grub引导已经设定好 */
@@ -99,6 +101,14 @@ startup_32:
 	lgdt gdt_descr							/* 重新加载gdtr。重新加载的意义在于，Linux2.4原来的gdt表在setup中，而这部分随着内核启动会被抛弃！
 											所以要使用新的在内核中的gdt表。对于我们来说，原有的gdt表由grub提供，重新加载是为了让我们的内核来控制gdt表，
 											使之随时可修改，更可控 */
+	lidt idt_descr							/* 加载idtr */
+	
+	ljmp $(__KERNEL_CS), $1f				/* 使得cpu使用新的gdt表数据 */
+1:	movl $(__KERNEL_DS), %eax				/* 重新加载段寄存器的值 */
+	movl %eax, %ds
+	movl %eax, %es
+	movl %eax, %fs
+	movl %eax, %gs
 	
     movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
     movl $0x07580758, (%eax)            
@@ -156,10 +166,24 @@ ignore_int:
 	popl %eax
 	iret
 
+#define IDT_ENTRIES	256						/* 定义idt表项的数量 */
+#define GDT_ENTRIES	(__TSS(NR_CPUS))		/* 定义gdt表项的数量，为12个基本段描述符 + 每个cpu 4个段描述符 */
+
+.globl SYMBOL_NAME(idt)						/* 将表示idt表地址的标号全局化 */
+.globl SYMBOL_NAME(gdt)						/* 将表示gdt表地址的标号全局化 */
+
+ALIGN										
+	.word 0									/* 填充4字节0作为分割 */
+idt_descr:									/* 定义加载进入idtr的数据 */
+	.word IDT_ENTRIES * 8 - 1				/* 前2字节，idt表界限，为idt表大小-1 */
+SYMBOL_NAME(idt):
+	.long SYMBOL_NAME(idt_table)			/* 后4字节，idt表的位置, idt表定义在trap.c中 */
+	
+	.word 0									/* 填充4字节0作为分割 */
 gdt_descr:									/* 定义加载进入gdtr的数据 */
 	.word GDT_ENTRIES * 8 - 1				/* 前2字节，gdt表界限，为gdt表大小-1 */
 SYMBOL_NAME(gdt):							
-	.long SYMBOL_NAME(gdt_table)			/* 后4字节，gdt表的位置 */
+	.long SYMBOL_NAME(gdt_table)			/* 后4字节，gdt表的位置，gdt表定义在此文件中 */
 
 
 
@@ -185,7 +209,7 @@ ENTRY(empty_zero_page)
 
 .data										/* 数据段从这里开始之前很多属于数据段的内容放到了代码段，是为了对内存布局精确控制 */
 ALIGN
-ENTRY(gdt_table)
+ENTRY(gdt_table)							/* gdt表，前12个是基本段描述符，后面是每个cpu都有的tss与ldt段描述符与2个空的段描述符 */
 	.quad 0x0000000000000000				/* 防止段寄存器未设置时选用此段描述符，所以不设置，选用时会报错 */
 	.quad 0x0000000000000000				/* 不知道Linux2.4为什么不用这个 */
 	.quad 0x00cf9a000000ffff				/* 0x10 内核 4GB 代码 起始 0x00000000 */
@@ -194,3 +218,18 @@ ENTRY(gdt_table)
 	.quad 0x00cff2000000ffff				/* 0x2b 用户 4GB 数据 起始 0x00000000 */
 	.quad 0x0000000000000000				/* 未使用 */
 	.quad 0x0000000000000000				/* 未使用 */
+											/*以下这4个在Linux2.4中是APM段描述符
+											* APM段是指在高级电源管理（Advanced Power Management，简称APM）规范中定义的一段内存，
+											* 这段内存用于BIOS和操作系统之间的通信，以实现电源管理功能。
+											* 高级电源管理（APM）是一个早期的BIOS接口标准，
+											* 用于使操作系统能够与系统固件（BIOS）一起协调电源使用和电源状态的变化
+											* 随着技术的进步，APM标准已经被现代的电源管理接口，如ACPI（高级配置与电源接口）所取代。
+											* ACPI提供了更为复杂和灵活的电源管理能力，与现代硬件的兼容性也更好。
+											* 我这里留下它们占用的空间，但是值清空了，留下他们的空间是为了以防后续需要改动太多（比如宏__FIRST_TSS_ENTRY的值）。
+											*/
+	.quad 0x0000000000000000				/* 原值为0x0040920000000000 0x40 APM设置 用于处理不良BIOS的问题 */
+	.quad 0x0000000000000000				/* 原值为0x00409a0000000000 0x48 APM代码段 */
+	.quad 0x0000000000000000				/* 原值为0x00009a0000000000 0x50 APM 16位代码段（16位 */
+	.quad 0x0000000000000000				/* 原值为0x0040920000000000 0x58 APM数据段 */
+
+	.fill NR_CPUS * 4, 8, 0					/* 每个cpu都需要有自己的TSS与LDT段描述符，同时还预留了两个空的段描述符给他们 */
