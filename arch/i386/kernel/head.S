@@ -103,15 +103,26 @@ startup_32:
 											使之随时可修改，更可控 */
 	lidt idt_descr							/* 加载idtr */
 	
-	ljmp $(__KERNEL_CS), $1f				/* 使得cpu使用新的gdt表数据 */
+	ljmp $(__KERNEL_CS), $1f				/* 用这种方式重新加载cs段寄存器的值 */
 1:	movl $(__KERNEL_DS), %eax				/* 重新加载段寄存器的值 */
 	movl %eax, %ds
 	movl %eax, %es
 	movl %eax, %fs
 	movl %eax, %gs
+	lss stack_start, %esp                   /* 用这种方式重新加载ss段寄存器 */
+
+	xorl %eax, %eax
+	lldt %ax								/* linux根本没有用ldt，所以直接加载0值到ldtr中去 */
+	cld										/* 没有必要，因为df早就设定好了 */
+
+	movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
+    movl $0x07580758, (%eax)       
+
+	//call SYMBOL_NAME(start_kernel)		/* 前期基本准备工作已经完成，现在进入内核进步一初始化 */
+L6:
+	jmp L6									/* 永远不会回到这句 */
 	
-    movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
-    movl $0x07580758, (%eax)            
+     
 stop:
 	jmp stop
 
