@@ -19,7 +19,7 @@ LD = ld
 ASM = nasm
 LIB =-I ./include/
 
-C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -Wmissing-prototypes -c -fno-builtin -m32 -fno-stack-protector -nostdinc -fno-pic -gdwarf-2
+C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -c -fno-builtin -m32 -fno-stack-protector -nostdinc -fno-pic -gdwarf-2
 #-Wall:开启编译器的大多数常用警告。这是推荐的一个参数，因为它会帮助开发者识别出代码中的常见问题。
 #需要注意的是，尽管名为“所有(all)”，但 -Wall 并不会开启所有的警告。
 #-W:在某些GCC版本中，-W 与 -Wall 是等价的，都用于开启大多数常用警告。
@@ -27,7 +27,7 @@ C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -Wmissing-prototypes -c -fno-built
 #-Wstrict-prototypes:这个选项会要求函数声明具有明确的参数类型。
 #例如，对于C语言，一个像 int foo(); 这样的函数声明是不明确的，因为它意味着函数foo可以接受任意数量和类型的参数。
 #使用 -Wstrict-prototypes 会产生一个警告，建议更明确地声明，如 int foo(void);。
-#-Wmissing-prototypes:这个选项会在没有前置函数声明的情况下为全局函数生成警告。
+#-Wmissing-prototypes:这个选项会在没有前置函数声明的情况下为全局函数生成警告。linux2.4中大量的全局函数都没有声明，所以不用这个参数
 #这是为了确保所有全局函数都有一个头文件中的原型，这样可以在不同的源文件之间共享并检查这些函数的参数和返回类型。
 #-I 参数指定包含文件的搜索路径。-c 这告诉GCC仅编译源文件但不链接。
 #-fno-builtin 这意味着不使用任何内置的函数优化。默认情况下，GCC会尝试使用内置版本的某些函数（例如memcpy、memset等）

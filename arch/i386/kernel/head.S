@@ -12,6 +12,8 @@
                                             ---------------------------------------------------------- */                                            
 MBOOT_HEADER_MAGIC = 0x1BADB002 	        /* Multiboot 魔数，由规范决定的 */
 
+											/* 设定flags以决定返回的multiboot结构体信息包含哪些信息，设定规则查看：
+											https://blog.csdn.net/weixin_43836778/article/details/123234888 */
 MBOOT_MEM_INFO = 1 << 1    	                /* flags 1 号位表示告诉GRUB把内存空间的信息包含在Multiboot信息结构中 */
 
 MBOOT_HEADER_FLAGS = MBOOT_MEM_INFO         /* 定义flags域 */
@@ -45,10 +47,19 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
                                             rip + 偏移，可以一直这么运行下去  */
                                             
 /* -----------------------------------------以上就是能让内核映像被grub引导的文件头---------------------------------------------------- */
-
-	  				                        /* 此时经过grub引导,中断是关闭状态 */
-		                                    /* 当grub引导结束, 会返回一个存储很多信息的结构体, 其地址会放入ebx中 */
-                                            /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3), 并且设定好了所有段寄存器 */
+											/*
+											* grub启动后的机器状态：
+											* 参考 Multiboot 规范中的 Machine state
+											* 启动后，在32位内核进入点，机器状态如下：
+											*   1. CS 指向基地址为 0x00000000，限长为4G – 1的代码段描述符。
+											*   2. DS，SS，ES，FS 和 GS 指向基地址为0x00000000，限长为4G – 1的数据段描述符。
+											*   3. A20 地址线已经打开。
+											*   4. 页机制被禁止。
+											*   5. 中断被禁止。
+											*   6. EAX = 0x2BADB002，魔数，说明操作系统是由符合 Multiboot 的 boot loader 加载的
+											*   7. 系统信息和启动信息块的线性地址保存在 EBX中（相当于一个指针）。
+											*/
+                                            /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3) */
 .code32
 .section .text
 #include <asm-i386/segment.h>
@@ -57,12 +68,6 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
 #include <asm-i386/desc.h>
 #include <linux/threads.h>
 startup_32:
-	cld                                     /* 设定df，但没有必要，因为grub引导已经设定好 */
-	movl $(__KERNEL_DS), %eax               /* 设定除了cs以外所有段寄存器为内核数据段选择子，但没有必要，因为grub引导已经设定好 */
-	movl %eax, %ds                          
-	movl %eax, %es                        
-	movl %eax, %fs                        
-	movl %eax, %gs                                      
 
                                             /* 将pg0至0页间的 8kb做成两个内核使用的临时页表，映射0-8m物理地址，为开启页机制做准备*/
     movl $pg0-__PAGE_OFFSET, %edi           /* 让edi中存上pg0的地址 */
@@ -78,6 +83,7 @@ startup_32:
 	movl %cr0,%eax                          /* 设定cr0寄存器的pg位，开启页机制 */
 	orl $0x80000000,%eax
 	movl %eax,%cr0
+
 	jmp 1f			                        /* 用jmp抛弃流水线预取指令 */
 1:
 	movl $1f,%eax
@@ -101,6 +107,7 @@ startup_32:
 	lgdt gdt_descr							/* 重新加载gdtr。重新加载的意义在于，Linux2.4原来的gdt表在setup中，而这部分随着内核启动会被抛弃！
 											所以要使用新的在内核中的gdt表。对于我们来说，原有的gdt表由grub提供，重新加载是为了让我们的内核来控制gdt表，
 											使之随时可修改，更可控 */
+
 	lidt idt_descr							/* 加载idtr */
 	
 	ljmp $(__KERNEL_CS), $1f				/* 用这种方式重新加载cs段寄存器的值 */
@@ -113,19 +120,17 @@ startup_32:
 
 	xorl %eax, %eax
 	lldt %ax								/* linux根本没有用ldt，所以直接加载0值到ldtr中去 */
-	cld										/* 没有必要，因为df早就设定好了 */
 
-	movl $0xB8000, %eax                     /* 显示两个字符xx, 测试能够工作。 */
-    movl $0x07580758, (%eax)       
+	add $__PAGE_OFFSET, %ebx				/* ebx中存储着grub引导结束后返回的multiboot_t结构体地址，
+											且地址是开启段机制后的线性地址（3G以下），为了优雅，使内核的一切都在3G以上，所以这里+3G */
+	movl %ebx, (grub_mboot_ptr - __PAGE_OFFSET)	/* 将 ebx 中存储的指针存入 grub_mboot_ptr 变量，注意这个变量的地址在3G以上，
+											现在还没有开启页机制，所以使用这个变量地址要-3G，而且这个赋值行为一定要在清空bss段之后*/
 
-	//call SYMBOL_NAME(start_kernel)		/* 前期基本准备工作已经完成，现在进入内核进步一初始化 */
+	call SYMBOL_NAME(start_kernel)			/* 前期基本准备工作已经完成，现在进入内核进步一初始化 */
+
 L6:
 	jmp L6									/* 永远不会回到这句 */
 	
-     
-stop:
-	jmp stop
-
 /* 设置idt表内所有256个中断门描述符指向同一个函数, 但现在并不会加载idt表，
 只有在分页直接打开后，并且内核运行在3G以上以后才会加载。并且也不会去开中断*/
 setup_idt:
