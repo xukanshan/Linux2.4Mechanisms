@@ -19,7 +19,7 @@ LD = ld
 ASM = nasm
 LIB =-I ./include/
 
-C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -c -fno-builtin -m32 -fno-stack-protector -nostdinc -fno-pic -gdwarf-2
+C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -c -fno-builtin -m32 -fno-stack-protector -fno-pic -gdwarf-2
 #-Wall:开启编译器的大多数常用警告。这是推荐的一个参数，因为它会帮助开发者识别出代码中的常见问题。
 #需要注意的是，尽管名为“所有(all)”，但 -Wall 并不会开启所有的警告。
 #-W:在某些GCC版本中，-W 与 -Wall 是等价的，都用于开启大多数常用警告。
@@ -33,7 +33,8 @@ C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -c -fno-builtin -m32 -fno-stack-pr
 #-fno-builtin 这意味着不使用任何内置的函数优化。默认情况下，GCC会尝试使用内置版本的某些函数（例如memcpy、memset等）
 #-m32 指定生成32位x86代码。这对于编译32位的操作系统或应用程序是必要的。
 #-fno-stack-protector 这将禁用栈保护，栈保护是一个安全特性，用于检测栈溢出攻击。但在某些低级环境，如内核代码中，它可能不需要或可能导致问题。
-#-nostdinc 不在标准系统目录中搜索头文件。这在编写操作系统或其他不依赖于标准C库的代码时很有用。
+#-nostdinc 不在标准系统目录中搜索头文件。这在编写操作系统或其他不依赖于标准C库的代码时很有用。但是Linux2.4一些数据结构定义用到了
+#c库，所以复现时不能加这个参数
 #-fno-pic 不生成位置独立代码（Position-Independent Code）。在某些环境中，位置独立代码可能是不需要的或不被支持的。
 #位置独立代码（Position-Independent Code，简称PIC）是一种特殊类型的机器代码，它可以在内存中的任何位置执行，而不需要进行任何修改。
 #这与“位置相关代码”（Position-Dependent Code，非PIC）形成对比，位置相关代码在编译时会被固定到一个特定的内存地址，
@@ -82,7 +83,7 @@ link:
 
 .PHONY:clean
 clean:
-	$(RM) -r build
+	@sudo rm -r build
 
 .PHONY:update_image
 update_image:
@@ -115,5 +116,5 @@ qemu:
 .PHONY:debug
 debug:
 	qemu-system-x86_64 -serial stdio -S -s -drive file=./hd.img,format=raw,index=0,media=disk -m 512
-#-S：这使得QEMU在启动时不会自动开始模拟。它会暂停，等待一个调试器连接或接收到一个继续执行的命令。
+#-S：这使得QEMU在启动时不会自动开始模拟。它会停下来，等待一个调试器连接或接收到一个继续执行的命令。
 #-s：这是一个便捷选项，等同于 -gdb tcp::1234。它告诉QEMU在TCP端口1234上监听GDB调试器的连接。这允许你使用GDB调试你在QEMU中运行的代码

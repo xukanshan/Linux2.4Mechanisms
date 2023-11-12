@@ -11,6 +11,12 @@
 驱动和子系统层 (Driver and subsystem layer): 这些代码通常针对具体的设备或子系统，但仍然会尽可能地使用通用的接口和数据类型。 */
 
 #include <asm-i386/types.h>
+#include <asm-i386/posix_types.h>
+
+/* size_t 是一种在 C 语言（以及C++）中广泛使用的数据类型，用于表示大小或计数。
+其最常见的用途是表示数组中元素的数量、字符串的长度，或者是内存块的大小。
+size_t 被定义为足以存储任何数组的大小的无符号整数类型 */
+typedef __kernel_size_t size_t;
 
 typedef __u8 uint8_t;
 typedef __u16 uint16_t;

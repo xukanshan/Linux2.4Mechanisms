@@ -123,7 +123,7 @@ startup_32:
 
 	add $__PAGE_OFFSET, %ebx				/* ebx中存储着grub引导结束后返回的multiboot_t结构体地址，
 											且地址是开启段机制后的线性地址（3G以下），为了优雅，使内核的一切都在3G以上，所以这里+3G */
-	movl %ebx, (grub_mboot_ptr - __PAGE_OFFSET)	/* 将 ebx 中存储的指针存入 grub_mboot_ptr 变量，注意这个变量的地址在3G以上，
+	movl %ebx, (grub_multiboot_ptr - __PAGE_OFFSET)	/* 将 ebx 中存储的指针存入 grub_multiboot_ptr 变量，注意这个变量的地址在3G以上，
 											现在还没有开启页机制，所以使用这个变量地址要-3G，而且这个赋值行为一定要在清空bss段之后*/
 
 	call SYMBOL_NAME(start_kernel)			/* 前期基本准备工作已经完成，现在进入内核进步一初始化 */
@@ -171,7 +171,7 @@ ignore_int:
 	movl %eax, %ds
 	movl %eax, %es
 	pushl $int_msg
-    //call SYMBOL_NAME(printk)              /* 暂未实现printk函数 */
+    call SYMBOL_NAME(printk)              
 
 	popl %eax                               /* 丢弃压入的字符串地址 */
 
@@ -230,9 +230,9 @@ ENTRY(gdt_table)							/* gdt表，前12个是基本段描述符，后面是每�
 	.quad 0x0000000000000000				/* 不知道Linux2.4为什么不用这个 */
 	.quad 0x00cf9a000000ffff				/* 0x10 内核 4GB 代码 起始 0x00000000 */
 	.quad 0x00cf92000000ffff				/* 0x18 内核 4GB 数据 起始 0x00000000 */
-	.quad 0x00cffa000000ffff				/* 0x23 用户 4GB 代码 起始 0x00000000 */
-	.quad 0x00cff2000000ffff				/* 0x2b 用户 4GB 数据 起始 0x00000000 */
-	.quad 0x0000000000000000				/* 未使用 */
+	.quad 0x00cffa000000ffff				/* 0x20 用户 4GB 代码 起始 0x00000000 */
+	.quad 0x00cff2000000ffff				/* 0x28 用户 4GB 数据 起始 0x00000000 */
+	.quad 0x00c0920b80000007				/* 0x30 显存段用的段描述符，为了在早期实现printk而暂时设定，原是全0 */
 	.quad 0x0000000000000000				/* 未使用 */
 											/*以下这4个在Linux2.4中是APM段描述符
 											* APM段是指在高级电源管理（Advanced Power Management，简称APM）规范中定义的一段内存，
