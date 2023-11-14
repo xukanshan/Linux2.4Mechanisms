@@ -3,6 +3,8 @@
 #include <asm-i386/e820.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/ioport.h>
+#include <asm-i386/io.h>
 
 /* 用于存储grub返回的multiboot_t结构体的地址，
 我懒得为这个变量单独写个c文件，就放在这里吧, 因为主要就是这个文件中的代码会用到
@@ -154,6 +156,12 @@ void __init setup_memory_region(void)
 尤其是在嵌入式系统或操作系统的内核代码中。这样做可以让 C 代码访问链接脚本中定义的特定内存地址。*/
 extern char _text, _etext, _edata, _end;
 
+/* 用来表示内核代码段的资源，起始地址是1m，结束地址初始化为0 */
+static struct resource code_resource = {"Kernel code", 0x100000, 0};
+
+/* 用来表示内核数据段的资源 */
+static struct resource data_resource = {"Kernel data", 0, 0};
+
 void __init setup_arch(char **cmdline_p)
 {
     setup_memory_region();
@@ -163,4 +171,9 @@ void __init setup_arch(char **cmdline_p)
     init_mm.end_code = (unsigned long)&_etext; /* _etext是由链接脚本提供的标签 */
     init_mm.end_data = (unsigned long)&_edata; /* _edata是由链接脚本提供的标签 */
     init_mm.brk = (unsigned long)&_end;        /* _end是由链接脚本提供的标签 */
+
+    code_resource.start = virt_to_bus(&_text);
+    code_resource.end = virt_to_bus(&_etext) - 1;
+    data_resource.start = virt_to_bus(&_etext);
+    data_resource.end = virt_to_bus(&_edata) - 1;
 }

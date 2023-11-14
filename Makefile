@@ -40,6 +40,15 @@ C_FLAGS = $(LIB) -Wall -W -Wstrict-prototypes -c -fno-builtin -m32 -fno-stack-pr
 #这与“位置相关代码”（Position-Dependent Code，非PIC）形成对比，位置相关代码在编译时会被固定到一个特定的内存地址，
 #如果要在其他地址执行，需要对其进行重定位。但是，位置独立代码也有其开销。为了减少代码的大小和复杂性，或者为了最大化性能，开发人员可能会选择不使用PIC。
 #-gdwarf-2 生成用于调试的DWARF 2格式的信息。这对于使用GDB或其他调试工具进行调试非常有用。DWARF 是一种用于表示程序调试信息的标准
+#-fgnu89-inline  GCC 使用旧的 GNU89 内联语义，而不是 C99 的内联语义。
+#对于extern inline 旧版gcc：我在头文件中定义一个d函数，并且加上了extern inline。假设a.c,b.c,c.c调用了这个头文件定义的d函数，
+#那么a.c函数就会将这个d函数直接插入，而b,c函数就不会直接插入d函数，而是会去寻找d函数不加extern inline版本。新版gcc：a.c, b.c, c.c中的每个文件被编译时，
+#它们都会看到 d 函数的 extern inline 定义。在 C99 标准中，inline 函数默认情况下不会在外部链接中提供其符号。
+#因此，每个编译单元（a.c, b.c, c.c）都会尝试生成自己的 d 函数的本地副本。当这些编译单元最终链接成一个程序时，链接器会发现 d 函数在多个编译单元中都有定义，从而引发重复定义的错误。
+#这种重复定义的问题是因为新版 GCC 遵循的 C99 行为，其中 inline 函数默认不提供外部链接的符号，除非显式指定。
+#因此，在新版 GCC 中，如果不希望每个编译单元都有自己的 d 函数副本，就需要额外的处理，
+#例如使用 static inline 替代 extern inline，或者在一个单独的 .c 文件中提供一个普通（非内联）的 d 函数定义供外部链接使用。
+#猜测Linux2.4（遵循的是 GNU89 的内联语义）这么做，是因为inb，outb之类只会在底层驱动一次使用，这样就能避免符号冲突
 
 ASM_FLAGS = $(LIB) -c -fno-builtin -m32 -gdwarf-2 -D__ASSEMBLY__ -fno-stack-protector -nostdinc -fno-pic  
 #虽然编译汇编也是用的gcc编译器，但是相比于C_FLAGS，ASM_FLAGS少了-Wall（因为这些选项是为C编译器设计的） 

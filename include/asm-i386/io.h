@@ -1,5 +1,8 @@
 #ifndef _ASM_I386_IO_H
 #define _ASM_I386_IO_H
+/* 这个头文件中，我将所有的extern inline 替换成了static inline，原因见makefile文件的#-fgnu89-inline参数解释 */
+
+#include <asm-i386/page.h>
 
 /*
  * 用于将地址 x 转换为用于I/O操作的虚拟地址。
@@ -28,7 +31,7 @@
 
 /* 这个宏就是为了处理outb与outb_p名字的差异 */
 #define __OUT1(s, x)                                                 \
-    extern inline void out##s(unsigned x value, unsigned short port) \
+    static inline void out##s(unsigned x value, unsigned short port) \
     {
 
 /* 这个宏就是outb与outb_p共同的部分 */
@@ -47,7 +50,7 @@ __OUT(l, , int)
 
 /* 这个宏就是为了处理inb与inb_p名字的差异 */
 #define __IN1(s)                                         \
-    extern inline RETURN_TYPE in##s(unsigned short port) \
+    static inline RETURN_TYPE in##s(unsigned short port) \
     {                                                    \
         RETURN_TYPE _v;
 
@@ -74,7 +77,7 @@ __IN(l, "")
 
 /* ins的内联汇编实现 */
 #define __INS(s)                                                                            \
-    extern inline void ins##s(unsigned short port, void *addr, unsigned long count)         \
+    static inline void ins##s(unsigned short port, void *addr, unsigned long count)         \
     {                                                                                       \
         __asm__ __volatile__("rep ; ins" #s                                                 \
                              : "=D"(addr), "=c"(count) : "d"(port), "0"(addr), "1"(count)); \
@@ -87,7 +90,7 @@ __INS(l)
 
 /* outs的内联汇编实现 */
 #define __OUTS(s)                                                                           \
-    extern inline void outs##s(unsigned short port, const void *addr, unsigned long count)  \
+    static inline void outs##s(unsigned short port, const void *addr, unsigned long count)  \
     {                                                                                       \
         __asm__ __volatile__("rep ; outs" #s                                                \
                              : "=S"(addr), "=c"(count) : "d"(port), "0"(addr), "1"(count)); \
@@ -97,5 +100,14 @@ __INS(l)
 __OUTS(b)
 __OUTS(w)
 __OUTS(l)
+
+/* 将虚拟地址转换成物理地址 */
+static inline unsigned long virt_to_phys(volatile void *address)
+{
+    return __pa(address);
+}
+
+/* 将虚拟地址转换成总线地址，实际就是物理地址 */
+#define virt_to_bus virt_to_phys
 
 #endif /* _ASM_I386_IO_H */

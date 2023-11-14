@@ -26,8 +26,8 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 		*(.text)
 		. = ALIGN(4096);                        
 	}
-    _etext = .;			                        /* 代码段结束，我也不知道为什么linux2.4放在了这个位置，没有包含诸如.text.init这样的代码段 */
-
+    _etext = .;			                        /* 代码段结束，我也不知道为什么linux2.4放在了这个位置，没有包含诸如.text.init这样的代码段
+                                                这个也是数据段的开始 */
 	.data : AT(ADDR(.data) - 0xC0000000)
 	{
 		*(.data)
