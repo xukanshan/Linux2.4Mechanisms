@@ -12,15 +12,12 @@ ENTRY(grub_head)                                /* 设置入口点为grub_head_t
 SECTIONS                                        /* SECTIONS块定义了输出文件的段组织布局 */ 
 {	
     . = 0x100000;                               /* 设置当前位置为0x100000。在链接脚本中.表示当前位置，它决定了下一个段在输出文件中的位置。*/
-    PROVIDE( _start = . );                      /* 提供一个全局符号_start，其值为当前位置计数器的值 */
-    .data.grub_head_data :                      /* 定义一个输出文件中的数据段.grub_head_data段，这个段将会从1MB开始 */
+    PROVIDE( _start = . );                      /* 提供一个全局符号_start(如果该符号没有定义)，其值为当前位置计数器的值 */
+    _text = .;                                  /* 将当前位置赋值给 _text（无论有没有被定义） 标签，表示代码段起始 */ 
+    .text.grub_head :                           /* 定义一个输出文件中的代码段.grub_head段，这个段将会从1MB开始 */
     {             
-		*(.grub_head_data)                      /* 将输入文件中的所有名字有.grub_head_data的段的内容合并到输出文件中的一个.grub_head_data段中。*/
+		*(.grub_head)                           /* 将输入文件中的所有名字有.grub_head的段的内容合并到输出文件中的一个.grub_head段中。*/
                                                 /* *是一个通配符，它表示所有输入文件 */
-	}
-    .text.grub_head_code :               
-	{
-		*(.grub_head_code)
 	}
     . = ALIGN(4096);                            /*当前位置向前增长到4096的倍数，所以下一个段就是4KB对齐了，相当于我们预留了4KB空间给grub引导头*/
     . += 0xC0000000;                            /* 当前位置计数器增加0xC0000000, 仿照linux2.4, 内核编译地址在3G以上 */
@@ -29,18 +26,22 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 		*(.text)
 		. = ALIGN(4096);                        
 	}
+    _etext = .;			                        /* 代码段结束，我也不知道为什么linux2.4放在了这个位置，没有包含诸如.text.init这样的代码段 */
+
+	.data : AT(ADDR(.data) - 0xC0000000)
+	{
+		*(.data)
+		*(.rodata)
+		. = ALIGN(8192);                        /* 这里设定8k对齐，是为了让后面的.data.init_task 8k起始，不仅因为Linux2.4中一个task_struct与内核栈
+                                                共享8k，所以起始地址也是8k对齐，也是为了规避grub的error: overlap detected错误 */
+	}
+    _edata = .;			                        /* 数据段结束，我也不知道为什么linux2.4放在了这个位置，没有包含诸如.data.init_task这样的数据段 */
     .data.init_task : AT(ADDR(.data.init_task) - 0xC0000000)    
     {
         *(.data.init_task)
                                                 /* 这个段对应init_task_union变量，本就是8K大小，结束地址不对齐也可。 */
     }                                           /* 这里如果设定了结束地址8K对齐，那么这个这个段的起始地址也必须8K对齐，否则grub会报error: overlap detected */
                                                 /* 换句话说，这个结束地址8K对齐决定了前一个段的结束地址也必须8K对齐 */
-	.data : AT(ADDR(.data) - 0xC0000000)
-	{
-		*(.data)
-		*(.rodata)
-		. = ALIGN(4096);
-	}
     PROVIDE( __bss_start = . );
 	.bss : AT(ADDR(.bss) - 0xC0000000)
 	{

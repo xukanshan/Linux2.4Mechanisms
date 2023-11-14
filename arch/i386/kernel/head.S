@@ -22,7 +22,9 @@ MBOOT_HEADER_FLAGS = MBOOT_MEM_INFO         /* 定义flags域 */
                                                要求其结果必须是32位的无符号值 0 (即magic + flags + checksum = 0) */
 MBOOT_CHECKSUM = -(MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
 
-.section .data.grub_head_data               /* 定义一个数据段, 名字叫做grub_head_data, 用来设置符合 Multiboot 规范的开头 */
+.section .text.grub_head               		/* 定义一个代码, 名字叫做grub_head, 用来设置符合 Multiboot 规范的开头以及一些代码
+											照理说mulbitoob开头与代码应该分属数据段与代码段，但是Linux2.4本身就有大量数据位于代码段中，
+											所以这里直接模仿 */
 .global stext
 .global _stext
 stext:                                
@@ -30,9 +32,7 @@ _stext:  	                                /* 仿照Linux，用_stext与stext记�
 .long MBOOT_HEADER_MAGIC                    /* GRUB 会通过这个魔数判断该映像是否支持 */
 .long MBOOT_HEADER_FLAGS                    /* GRUB 的一些加载时选项 */
 .long MBOOT_CHECKSUM                        /* 检测数值 */
-
-.code32                                     /* 代码以 32-bit 的方式编译 */  	                                
-.section .text.grub_head_code  	            /* 代码段, 并且这个代码段命名为grub_head_code */
+                                
 #include <linux/linkage.h> 
 
 ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(链接脚本使用了这个符号来作为链接后的内核映像入口地址) */
@@ -60,7 +60,6 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
 											*   7. 系统信息和启动信息块的线性地址保存在 EBX中（相当于一个指针）。
 											*/
                                             /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3) */
-.code32
 .section .text
 #include <asm-i386/segment.h>
 #include <asm-i386/page.h>

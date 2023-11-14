@@ -1,6 +1,7 @@
-#include <asm-i386/tmp_put_char.h>
-  
-.section .text
+TI_GDT = 0
+RPL0 = 0
+SELECTOR_VIDEO = (0x0006 << 3) + TI_GDT + RPL0
+
 .global put_char
 put_char:
     push %eax
