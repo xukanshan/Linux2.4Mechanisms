@@ -110,4 +110,10 @@ static inline unsigned long virt_to_phys(volatile void *address)
 /* 将虚拟地址转换成总线地址，实际就是物理地址 */
 #define virt_to_bus virt_to_phys
 
+/* 将物理地址转换成虚拟地址 */
+static inline void * phys_to_virt(unsigned long address)
+{
+	return __va(address);
+}
+
 #endif /* _ASM_I386_IO_H */

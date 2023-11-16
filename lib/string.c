@@ -20,3 +20,14 @@ size_t strnlen(const char *s, size_t count)
         ;
     return sc - s; /* 返回 sc - s，即从字符串 s 的起始位置到 sc 当前位置之间的字符数量，这代表了字符串的长度 */
 }
+
+/* 将s起始，大小为count字节的区域设置成c，常用于清零或者置1，返回清空区域的起始地址 */
+void *memset(void *s, int c, size_t count)
+{
+    char *xs = (char *)s;
+
+    while (count--)
+        *xs++ = c;
+
+    return s;
+}

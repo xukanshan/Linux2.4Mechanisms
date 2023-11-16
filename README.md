@@ -23,9 +23,10 @@
 
 - 环境搭建：https://www.bilibili.com/video/BV1F84y1f7am/	
 
-  注意：WSL环境搭建后，会遇到qemu启动没有图形界面问题，解决方法：https://www.bilibili.com/video/BV1fu4y1e7hG/（视频中02：08，安装gdk报错问题需自行解决）。在vmware中运行一个有图形化界面的Linux虚拟机来搭建环境就没有这个问题。
+  注意：WSL环境搭建后，会遇到qemu启动没有图形界面问题，解决方法：https://www.bilibili.com/video/BV1fu4y1e7hG/
+  （视频中02：08，安装gdk报错问题需自行解决）。在vmware中运行一个有图形化界面的Linux虚拟机来搭建环境就没有这个问题。
 
-- 环境搭建后-->运行起来：https://www.bilibili.com/video/BV1fu4y1e7hG/ （视频中复用了胡自成自己写的操作系统XOS（https://github.com/huloves/XOS） 启动部分（XOS仓库doc目录下有文档））
+- 环境搭建后-->运行起来：https://www.bilibili.com/video/BV1fu4y1e7hG/ （视频中复用了胡庆伟自己写的操作系统XOS（https://github.com/huloves/XOS） 启动部分（XOS仓库doc目录下有文档））
 
 - 主要参考书籍：《Linux内核源代码情景分析》，《操作系统真象还原》，《Linux内核设计与实现》
 

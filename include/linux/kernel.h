@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <linux/linkage.h>
 
+#define KERN_WARNING "<4>" /* 警告级别 */
+
 /* ((format (printf, 1, 2)))属性。这个属性用于告诉编译器，该函数接受类似于printf、scanf、strftime或strfmon等标准库函数的格式字符串。
 这可以让编译器检查函数调用中的格式字符串与提供的参数是否匹配，从而避免一些常见的错误。
 (printf, 1, 2): 这部分指定了三个参数：

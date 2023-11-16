@@ -5,6 +5,8 @@
 #include <linux/sched.h>
 #include <linux/ioport.h>
 #include <asm-i386/io.h>
+#include <asm-i386/page.h>
+#include <linux/bootmem.h>
 
 /* 用于存储grub返回的multiboot_t结构体的地址，
 我懒得为这个变量单独写个c文件，就放在这里吧, 因为主要就是这个文件中的代码会用到
@@ -164,7 +166,13 @@ static struct resource data_resource = {"Kernel data", 0, 0};
 
 void __init setup_arch(char **cmdline_p)
 {
-    setup_memory_region();
+
+    unsigned long start_pfn;    /* 用于记录内存管理系统可管理的内存起始页面帧号 */
+    unsigned long max_pfn;      /* 记录内存条可用最大内存地址对应的页面帧号 */
+    unsigned long max_low_pfn;  /* 记录32位系统下内存管理系统最少可管理内存 */
+    int i;                      /* 循环变量 */
+    unsigned long bootmap_size; /* 记录引导内存分配器的位图大小 */
+    setup_memory_region();      /* 建立内存区域映射 */
     /* _text由链接脚本提供。假设_text标签指代的地址是0x1000，最后start_code的赋值就是0x1000。其实无论变量也好，标签也好，都是指代了个地址，
     &就是得到这个符号（标签，变量）所指代的地址 */
     init_mm.start_code = (unsigned long)&_text;
@@ -176,4 +184,83 @@ void __init setup_arch(char **cmdline_p)
     code_resource.end = virt_to_bus(&_etext) - 1;
     data_resource.start = virt_to_bus(&_etext);
     data_resource.end = virt_to_bus(&_edata) - 1;
+
+/* PFN 代表 "Page Frame Number, UP 和 DOWN 分别指向上舍入和向下舍入到最接近的页边界
+PHYS 指的是将页帧号转换为物理地址 */
+/* 用于将一个地址向上舍入到最接近的页边界虚拟地址 */
+#define PFN_UP(x) (((x) + PAGE_SIZE - 1) >> PAGE_SHIFT)
+
+/* 这个宏用于将一个地址向下舍入到最接近的页边界虚拟地址 */
+#define PFN_DOWN(x) ((x) >> PAGE_SHIFT)
+
+/* 于将页帧号转换回表示的物理地址 */
+#define PFN_PHYS(x) ((x) << PAGE_SHIFT)
+
+/* 预留给vmalloc与initrd使用的内存，vmalloc分配会虚拟地址连续，kmalloc物理地址连续
+initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时根文件系统。它主要用于预加载某些驱动程序或其他必要的东西，
+直到真正的 root 文件系统可以被挂载。 */
+#define VMALLOC_RESERVE (unsigned long)(128 << 20)
+
+/* 这定义了内核最大可直接线性映射（也就是说，整个内存条的物理地址都在内核虚拟地址空间范围内可以被直接访问）
+的物理地址是1G（-3G是3G的原码取反，然后+1，最后是1G）-128MB = 896MB。 */
+#define MAXMEM (unsigned long)(-PAGE_OFFSET - VMALLOC_RESERVE)
+
+/* 内核最大可直接映射物理地址的下边界页表示的物理地址 */
+#define MAXMEM_PFN PFN_DOWN(MAXMEM)
+
+/* 不使用物理地址扩展（PAE）模式下的最大页帧号，为4g >> 12，也就是 1 << 20 */
+#define MAX_NONPAE_PFN (1 << 20)
+
+    start_pfn = PFN_UP(__pa(&_end)); /* 计算内存管理系统实际可以管理的页帧号（上边界） */
+    max_pfn = 0;                     /* 初始化max_pfn */
+    /* 遍历之前添加到e820map中的所有内存区域映射，找出内存条提供的可用内存的最高页面帧号 max_pfn */
+    for (i = 0; i < e820.nr_map; i++)
+    {
+        unsigned long start, end;
+        if (e820.map[i].type != E820_RAM)                    /* 内存管理系统管理的内存对应的e820结构体type自然是RAM */
+            continue;                                        /* 不是RAM，自然跳过 */
+        start = PFN_UP(e820.map[i].addr);                    /* 找到内存条提供的可用内存的上边界页面帧号 */
+        end = PFN_DOWN(e820.map[i].addr + e820.map[i].size); /* 找到内存条提供的可用内存的下边界页面帧号 */
+        if (start >= end)                                    /* 这种情况一定是end值溢出了 */
+            continue;
+        if (end > max_pfn) /* 取最大的那个内存条提供的可用内存的下边界页面帧号 */
+            max_pfn = end;
+    }
+    /*
+     * Determine low and high memory ranges:
+     */
+    max_low_pfn = max_pfn; /* 先让32位系统下内存管理系统最小可管理内存等于内存条提供的可用内存 */
+    /* 如果内存条提供的可用内存大于32位系统可以直接映射的物理内存（896m）*/
+    if (max_low_pfn > MAXMEM_PFN)
+    {
+        max_low_pfn = MAXMEM_PFN; /* 那么32位系统下内存管理系统最小可管理内存就是896m，这部分一定可以被管理 */
+
+/* 以下五个预编译条件包裹的代码留在这里，是为了更好理解高端内存与PAE机制的实际效果 */
+#ifndef CONFIG_HIGHMEM
+        /* 以下五句代码包裹在#ifndef CONFIG_HIGHMEM内，表示没有开启CONFIG_HIGHMEM，我留在这里是为了更好理解高端内存机制与PAE机制
+        而此时内存条提供的可用内存大于32位系统可以直接映射的物理内存（896m），那么打印警告信息，实际可被管理的内存就只有896m */
+        printk(KERN_WARNING "Warning only %ldMB will be used.\n", MAXMEM >> 20);
+        /* 如果内存条提供的可用内存对应的最大页帧号，大于了没有开启PAE机制对应的支持最大的页帧号（4GB对应的页面帧号），
+        说明此时内存条提供的可用内存不仅大于896MB，还大于4GB，那么打印警告信息，建议开启PAE机制（该机制允许32位系统支持最大64G内存） */
+        if (max_pfn > MAX_NONPAE_PFN)
+            printk(KERN_WARNING "Use a PAE enabled kernel.\n");
+        else /* 来到这里，说明内存条提供的可用内存大于896m，但是小于4GB，那么建议开启高端内存机制 */
+            printk(KERN_WARNING "Use a HIGHMEM enabled kernel.\n");
+#else /* #define CONFIG_HIGHMEM */
+#ifndef CONFIG_X86_PAE
+        /* 以下四句包裹在#ifndef CONFIG_HIGHMEM的#else 和#ifndef CONFIG_X86_PAE，表示开启了高端内存机制，但是没有开启PAE， \
+         */
+        /* 此时内存条提供的可用内存大于4G */
+        if (max_pfn > MAX_NONPAE_PFN)
+        {
+            max_pfn = MAX_NONPAE_PFN;                                /* 那么最大可被管理的内存就是4G */
+            printk(KERN_WARNING "Warning only 4GB will be used.\n"); /* 打印警告信息，只有4G内存可被管理 */
+            printk(KERN_WARNING "Use a PAE enabled kernel.\n");      /* 建议开启PAE */
+        }
+#endif /* CONFIG_X86_PAE */
+#endif /* CONFIG_HIGHMEM */
+    }
+
+    /* 初始化引导内存分配器，并得到引导内存分配器的位图大小 */
+    bootmap_size = init_bootmem(start_pfn, max_low_pfn);
 }
