@@ -169,7 +169,7 @@ void __init setup_arch(char **cmdline_p)
 
     unsigned long start_pfn;    /* 用于记录内存管理系统可管理的内存起始页面帧号 */
     unsigned long max_pfn;      /* 记录内存条可用最大内存地址对应的页面帧号 */
-    unsigned long max_low_pfn;  /* 记录32位系统下内存管理系统最少可管理内存 */
+    unsigned long max_low_pfn;  /* 记录32位系统下内存管理系统最少可管理内存，也是可直接映射内存区与的边界，一般为896m */
     int i;                      /* 循环变量 */
     unsigned long bootmap_size; /* 记录引导内存分配器的位图大小 */
     setup_memory_region();      /* 建立内存区域映射 */
@@ -187,13 +187,13 @@ void __init setup_arch(char **cmdline_p)
 
 /* PFN 代表 "Page Frame Number, UP 和 DOWN 分别指向上舍入和向下舍入到最接近的页边界
 PHYS 指的是将页帧号转换为物理地址 */
-/* 用于将一个地址向上舍入到最接近的页边界虚拟地址 */
+/* 用于将一个地址向上舍入到最接近的页帧号 */
 #define PFN_UP(x) (((x) + PAGE_SIZE - 1) >> PAGE_SHIFT)
 
-/* 这个宏用于将一个地址向下舍入到最接近的页边界虚拟地址 */
+/* 这个宏用于将一个地址向下舍入到最接近的页帧号 */
 #define PFN_DOWN(x) ((x) >> PAGE_SHIFT)
 
-/* 于将页帧号转换回表示的物理地址 */
+/* 于将页帧号转换回表示的虚拟地址 */
 #define PFN_PHYS(x) ((x) << PAGE_SHIFT)
 
 /* 预留给vmalloc与initrd使用的内存，vmalloc分配会虚拟地址连续，kmalloc物理地址连续
@@ -263,4 +263,29 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
 
     /* 初始化引导内存分配器，并得到引导内存分配器的位图大小 */
     bootmap_size = init_bootmem(start_pfn, max_low_pfn);
+
+    /* 遍历e820映射，并将低于max_low_pfn（线性映射区域）的RAM内存区域注册到bootmem分配器中，
+    也就是位图清0（位图在初始化时全部置1了），以供内核在早期阶段使用 */
+    for (i = 0; i < e820.nr_map; i++)
+    {
+        /* curr_pfn记录需要注册的ram区域的起始页帧号，last_pfn记录需要注册的ram区域结束页帧号，size记录其大小 */
+        unsigned long curr_pfn, last_pfn, size;
+        if (e820.map[i].type != E820_RAM) /* 不是ram区域自然跳过 */
+            continue;
+        curr_pfn = PFN_UP(e820.map[i].addr); /* 得到当前需要添加的ram区域的起始地址的上边界页帧号 */
+        if (curr_pfn >= max_low_pfn)         /* 如果需要添加的ram区域超过直接映射区域，那么就跳过 */
+            continue;
+        /* 得到当前需要添加的ram区域的起始地址的下边界页帧号 */
+        last_pfn = PFN_DOWN(e820.map[i].addr + e820.map[i].size);
+
+        if (last_pfn > max_low_pfn) /* 如果如果需要添加的ram区域超过直接映射区域，那么舍弃掉超过直接映射区域的内存 */
+            last_pfn = max_low_pfn;
+
+        if (last_pfn <= curr_pfn) /* 防止出现值溢出的情况 */
+            continue;
+
+        size = last_pfn - curr_pfn; /* 得到要添加的ram区域的页面数量 */
+        /* 将RAM内存区域注册到bootmem分配器中，也就是位图清0（位图在初始化时全部置1了），以供内核在早期阶段使用 */
+        free_bootmem(PFN_PHYS(curr_pfn), PFN_PHYS(size));
+    }
 }

@@ -2,8 +2,8 @@
 #define _BOOTMEM_H
 #include <linux/init.h>
 
-
 extern unsigned long __init init_bootmem(unsigned long addr, unsigned long memend);
+extern void __init free_bootmem(unsigned long addr, unsigned long size);
 
 /* 它与Linux内核在系统启动早期的内存分配有关。在系统启动并且内存管理子系统还没有完全初始化之前，
 内核需要一种简单和有效的方式来分配内存，这就是所谓的"boot-time memory allocator"，或简称为"bootmem分配器"。

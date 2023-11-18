@@ -13,6 +13,7 @@ bootmem.c 中的引导内存分配器就会被淘汰，系统转而使用更高�
 #include <asm-i386/page.h>
 #include <asm-i386/io.h>
 #include <linux/string.h>
+#include <asm-i386/bitops.h>
 
 /* 初始化一个节点的引导内存管理器。它设置了一个位图来跟踪哪些页面是可用的，哪些是已经被占用的。参数：
 pg_data_t *pgdat: 指向一个包含节点（node）相关数据的结构，该结构抽象了一个内存节点
@@ -38,6 +39,34 @@ static unsigned long __init init_bootmem_core(pg_data_t *pgdat, unsigned long ma
     return mapsize; /* 返回位图的大小。 */
 }
 
+/* 用于释放引导内存分配器管理的内存。参数：
+bdata: 一个指向引导内存分配器的指针；
+addr: 要释放的内存的起始地址；
+size：要释放的内存的大小 */
+static void __init free_bootmem_core(bootmem_data_t *bdata, unsigned long addr, unsigned long size)
+{
+    unsigned long i;                                                         /* 循环变量 */
+    unsigned long start;                                                     /* 存储距离起始地址向上最近页的页帧号 */
+    unsigned long sidx;                                                      /* 存储距离起始地址向上最近页在页面位图中的索引 */
+    unsigned long eidx = (addr + size - bdata->node_boot_start) / PAGE_SIZE; /* 计算结束地址向下最近页在页面位图中的索引 */
+    unsigned long end = (addr + size) / PAGE_SIZE;                           /* 存储距离结束地址向下最近页的页帧号 */
+
+    if (!size) /* 如果 size 为零，则触发 BUG() 宏 */
+        BUG();
+    if (end > bdata->node_low_pfn) /* 如果计算出的 end 值超过了节点的最低物理帧号，也触发 BUG() 宏 */
+        BUG();
+
+    start = (addr + PAGE_SIZE - 1) / PAGE_SIZE;          /* 计算距离起始地址向上最近页的页帧号 */
+    sidx = start - (bdata->node_boot_start / PAGE_SIZE); /* 计算距离起始地址向上最近页在页面位图中的索引 */
+
+    for (i = sidx; i < eidx; i++)
+    {
+        /* 使用 test_and_clear_bit 函数测试并清除 bdata->node_bootmem_map 中的位。如果位已经被清除（即函数返回 0），则触发 BUG() 宏 */
+        if (!test_and_clear_bit(i, bdata->node_bootmem_map))
+            BUG();
+    }
+}
+
 unsigned long max_low_pfn; /* 记录内存管理系统可管理的最大物理页面号 */
 unsigned long min_low_pfn; /* 记录内存管理系统可管理的起始页面帧号 */
 
@@ -50,4 +79,13 @@ unsigned long __init init_bootmem(unsigned long start, unsigned long pages)
     min_low_pfn = start; /* 记录了内存管理系统可管理的起始页面帧号 */
     /* 初始化引导内存分配器，并返回引导内存分配器的位图大小 */
     return (init_bootmem_core(&contig_page_data, start, 0, pages));
+}
+
+/* 用于释放引导内存分配器管理的内存，也就是分配器的位图置0。参数：
+addr：要释放的内存空间的起始地址；
+size: 要释放的内存空间的字节大小 */
+void __init free_bootmem(unsigned long addr, unsigned long size)
+{
+    /* 调用函数去完成释放引导内存分配器管理的内存 */
+    return (free_bootmem_core(contig_page_data.bdata, addr, size));
 }
