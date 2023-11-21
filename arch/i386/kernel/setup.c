@@ -261,10 +261,10 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
 #endif /* CONFIG_HIGHMEM */
     }
 
-    /* 初始化引导内存分配器，并得到引导内存分配器的位图大小 */
+    /* 初始化引导内存分配器，并得到引导内存分配器的位图大小，且这个位图全部被置1 */
     bootmap_size = init_bootmem(start_pfn, max_low_pfn);
 
-    /* 遍历e820映射，并将低于max_low_pfn（线性映射区域）的RAM内存区域注册到bootmem分配器中，
+    /* 遍历e820映射，并将低于max_low_pfn（线性映射区域）的可用RAM内存区域注册到bootmem分配器中，
     也就是位图清0（位图在初始化时全部置1了），以供内核在早期阶段使用 */
     for (i = 0; i < e820.nr_map; i++)
     {
@@ -285,7 +285,16 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
             continue;
 
         size = last_pfn - curr_pfn; /* 得到要添加的ram区域的页面数量 */
-        /* 将RAM内存区域注册到bootmem分配器中，也就是位图清0（位图在初始化时全部置1了），以供内核在早期阶段使用 */
+        /* 将可用RAM内存区域注册到bootmem分配器中，也就是位图清0（位图在初始化时全部置1了），以供内核在早期阶段使用 */
         free_bootmem(PFN_PHYS(curr_pfn), PFN_PHYS(size));
     }
+
+    /* 将内核映像与引导内存位图自身占用内存保留 */
+    reserve_bootmem(HIGH_MEMORY, (PFN_PHYS(start_pfn) + bootmap_size + PAGE_SIZE - 1) - (HIGH_MEMORY));
+
+    /* 保留物理页0（这通常是因为物理地址0保存一些与引导以及BIOS本身有关的信息。
+    实际上，物理地址0附近的内存经常被标记为E820_RESERVED，但由于其特殊性，Linux内核选择明确地保留它 */
+    reserve_bootmem(0, PAGE_SIZE);
+
+    paging_init(); /* 来进一步完善页面映射机制，并建立起内存页面管理机制 */
 }
