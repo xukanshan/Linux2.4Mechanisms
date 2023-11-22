@@ -20,8 +20,7 @@
 /* 每个页表拥有的页表表项数目 */
 #define PTRS_PER_PTE 1024
 
-/* 解决汇编代码不识别结构体定义问题 */
-#ifndef __ASSEMBLY__
+
 
 /* 用于根据传入的虚拟地址与管理这个虚拟地址的页全局目录表表项指针，
 返回其虚拟地址对应的页中间目录表表项指针，
@@ -33,7 +32,7 @@ static inline pmd_t *pmd_offset(pgd_t *dir, unsigned long address)
     return (pmd_t *)dir;
 }
 
-#endif /* __ASSEMBLY__ */
+
 
 /* 用于设定一个pte表项的内容 */
 #define set_pte(pteptr, pteval) (*(pteptr) = pteval)

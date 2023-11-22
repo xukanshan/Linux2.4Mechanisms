@@ -9,11 +9,11 @@
 开始和结束的虚拟地址（start 和 end），以及页全局目录（pgd）的基地址 */
 static void __init fixrange_init(unsigned long start, unsigned long end, pgd_t *pgd_base)
 {
-    pgd_t *pgd;          /* 指向页全局目录表表项的指针 */
-    pmd_t *pmd;          /* 指向页中间目录表表项的指针 */
-    pte_t *pte;          /* 指向页表表项的指针 */
-    int i, j;            /* 两个循环变量 */
-    unsigned long vaddr; /* 计算要添加固定映射的虚拟地址 */
+    pgd_t *pgd;              /* 指向页全局目录表表项的指针 */
+    pmd_t *pmd;              /* 指向页中间目录表表项的指针 */
+    pte_t *pte;              /* 指向页表表项的指针 */
+    int i, j;                /* 两个循环变量 */
+    unsigned long vaddr;     /* 计算要添加固定映射的虚拟地址 */
     vaddr = start;           /* 传入的起始虚拟地址赋值给 vaddr */
     i = __pgd_offset(vaddr); /* 得到对应的页全局目录表表项索引 */
     j = __pmd_offset(vaddr); /* 得到对应的页中间目录表表项索引 */
@@ -45,11 +45,11 @@ static void __init fixrange_init(unsigned long start, unsigned long end, pgd_t *
 并且并且为一段用于固定映射虚拟地址初始化了页表，但没有映射到物理页 */
 static void __init pagetable_init(void)
 {
-    unsigned long vaddr, end; /* vaddr记录要添加映射的起始地址，end是要扩展映射的边界 */
-    pgd_t *pgd, *pgd_base;    /* 指向页全局目录表表项的指针，与指向页全局目标表基址的指针 */
-    int i, j, k;              /* 循环变量 */
-    pmd_t *pmd;               /* 指向页中间目录表表项的指针 */
-    pte_t *pte;               /* 指向页表表项的指针 */
+    unsigned long vaddr, end;                           /* vaddr记录要添加映射的起始地址，end是要扩展映射的边界 */
+    pgd_t *pgd, *pgd_base;                              /* 指向页全局目录表表项的指针，与指向页全局目标表基址的指针 */
+    int i, j, k;                                        /* 循环变量 */
+    pmd_t *pmd;                                         /* 指向页中间目录表表项的指针 */
+    pte_t *pte;                                         /* 指向页表表项的指针 */
     end = (unsigned long)__va(max_low_pfn * PAGE_SIZE); /* 计算要扩展映射的边界 */
     pgd_base = swapper_pg_dir;                          /* 得到页目录表基址，swapper_pg_dir定义在head.S中 */
     /* 我们要将整个直接线性映射区映射到内核地址空间，自然要得到3G对应的页全局目标表表项索引 */
@@ -103,18 +103,11 @@ void __init paging_init(void)
     /* 扩充由startup_32在第一阶段创建页目录表和页表到线性映射的结束位置，并且初始化用于固定映射的虚拟地址的页表 */
     pagetable_init();
 
+    /* 更新cr3，以刷新TLB中的页目录，这样做会使TLB中的所有内容失效，从而导致下一次地址转换时必须从页目录和页表中重新获取映射。
+    这确保了TLB与当前的%cr3指向的页目录保持同步 */
     __asm__("movl %%ecx,%%cr3\n" ::"c"(__pa(swapper_pg_dir)));
 
-    // #if CONFIG_X86_PAE
-    //     /*
-    //      * We will bail out later - printk doesnt work right now so
-    //      * the user would just see a hanging kernel.
-    //      */
-    //     if (cpu_has_pae)
-    //         set_in_cr4(X86_CR4_PAE);
-    // #endif
-
-    //     __flush_tlb_all();
+    // __flush_tlb_all();
 
     // #ifdef CONFIG_HIGHMEM
     //     kmap_init();

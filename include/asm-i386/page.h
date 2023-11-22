@@ -1,6 +1,11 @@
 #ifndef _ASM_I386_PAGE_H
 #define _ASM_I386_PAGE_H
 
+/* 定义内核的起始虚拟地址 */
+#define __PAGE_OFFSET (0xC0000000)
+
+/* 不让汇编识别以下定义 */
+#ifndef __ASSEMBLY__
 /* 最低一级页表所占地址位数 */
 #define PAGE_SHIFT 12
 
@@ -8,7 +13,6 @@
 #define PAGE_SIZE (1UL << PAGE_SHIFT)
 
 /* 定义内核的起始虚拟地址 */
-#define __PAGE_OFFSET (0xC0000000)
 #define PAGE_OFFSET ((unsigned long)__PAGE_OFFSET)
 
 /* 将虚拟地址转换成物理地址 */
@@ -17,7 +21,6 @@
 /* 将物理地址转换成虚拟地址 */
 #define __va(x) ((void *)((unsigned long)(x) + PAGE_OFFSET))
 
-#ifndef __ASSEMBLY__
 /* 这里使用了printk函数，但是Linux2.4的page.h中没有任何头文件直接或间接包含了该函数的声明，
 这种情况在 Linux 内核开发中并不少见，且通常不会影响编译和运行。但这里为了优雅，防止编译器警告，加了个#include <linux/kernel.h> */
 #include <linux/kernel.h>
@@ -35,8 +38,6 @@
         printk("kernel BUG at %s:%d!\n", __FILE__, __LINE__); \
         __asm__ __volatile__(".byte 0x0f,0x0b");              \
     } while (0)
-
-
 
 /* 全局页目录（Page Global Directory）表项内容 */
 typedef struct
@@ -104,9 +105,8 @@ Point p = (Point) { .x = 10, .y = 20 };
 /* 直接创建一个 prog_t 实例，并初始化其值为x */
 #define __pgprot(x) ((pgprot_t){(x)})
 
-#endif /* __ASSEMBLY__ */
-
 /* 任何数字，只要去与这个，就会低12位就会变成0，即向下取整4KB的整数倍 */
 #define PAGE_MASK (~(PAGE_SIZE - 1))
 
+#endif /* __ASSEMBLY__ */
 #endif /* _ASM_I386_PAGE_H */

@@ -1,23 +1,21 @@
 #ifndef _ASM_I386_PAGETABLE_H
 #define _ASM_I386_PAGETABLE_H
 
-#include <asm-i386/page.h>
-#include <asm-i386/pagetable-2level.h>
-
 #define TWOLEVEL_PGDIR_SHIFT 22
 #define BOOT_USER_PGD_PTRS (__PAGE_OFFSET >> TWOLEVEL_PGDIR_SHIFT)
 #define BOOT_KERNEL_PGD_PTRS (1024 - BOOT_USER_PGD_PTRS)
 
-/* 解决汇编不识别问题 */
+/* 不让汇编识别以下 */
 #ifndef __ASSEMBLY__
+
+#include <asm-i386/page.h>
+#include <asm-i386/pagetable-2level.h>
 
 /* 定义在head.S中 */
 extern pgd_t swapper_pg_dir[1024];
 
 /* arch/i386/mm/init.c */
 extern void paging_init(void);
-
-#endif /* __ASSEMBLY__ */
 
 /* 得到一个虚拟地址对应的页全局目录表表项索引 */
 #define pgd_index(address) ((address >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
@@ -103,4 +101,5 @@ extern void paging_init(void);
 /* 设定内核使用的页表表项属性位，通用设定 + 是否支持全局是能 */
 #define PAGE_KERNEL MAKE_GLOBAL(__PAGE_KERNEL)
 
+#endif /* __ASSEMBLY__ */
 #endif /* _ASM_I386_PAGETABLE_H */

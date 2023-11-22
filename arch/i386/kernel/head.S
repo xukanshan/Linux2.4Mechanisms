@@ -62,8 +62,8 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
                                             /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3) */
 .section .text
 #include <asm-i386/segment.h>
-#include <asm-i386/page.h>
-#include <asm-i386/pagetable.h>
+#include <asm-i386/page.h>					/* 引入__PAGE_OFFSET */
+#include <asm-i386/pagetable.h>				/* 引入BOOT_USER_PGD_PTRS 和 BOOT_KERNEL_PGD_PTRS */
 #include <asm-i386/desc.h>
 #include <linux/threads.h>
 startup_32:
