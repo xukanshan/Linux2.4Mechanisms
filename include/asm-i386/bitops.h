@@ -81,9 +81,20 @@ __builtin_constant_p 是 GCC 提供的一个内建函数，用于在编译时检
 表达式返回 true，否则返回 false。编译时常量与非常量对应两个处理函数主要是出于性能优化的考虑。
 constant_test_bit 是编译时常量对应处理函数。它通过简单的位运算（位移和位与操作）来测试位图中的位，这些操作在编译时就可以确定和优化，效率很高。
 variable_test_bit 是编译时常量对应处理函数。虽然使用内联汇编，但是运行效率不如constant_test_bit高。
-gcc -fno-builtin, 它会禁用对所有内建函数的优化，这些函数通常是标准库函数的特殊版本，例如 memcpy、strcpy 等, 
+gcc -fno-builtin, 它会禁用对所有内建函数的优化，这些函数通常是标准库函数的特殊版本，例如 memcpy、strcpy 等,
 然而__builtin_xx 是特殊的内建函数，不是实现某个标准库函数的特定功能，所以-fno-builtin对其无效 */
 #define test_bit(nr, addr) \
     (__builtin_constant_p(nr) ? constant_test_bit((nr), (addr)) : variable_test_bit((nr), (addr)))
+
+/* 设定内存中某一个比特为1，参数：
+nr：要设定的位相对于起始地址addr的偏移
+addr：要设定的位所在的内存区域起始地址 */
+static __inline__ void set_bit(int nr, volatile void *addr)
+{
+    __asm__ __volatile__(LOCK_PREFIX
+                         "btsl %1,%0"
+                         : "=m"(ADDR)
+                         : "Ir"(nr));
+}
 
 #endif /* _ASM_I386_BITOPS_H */

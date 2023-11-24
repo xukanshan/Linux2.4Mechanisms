@@ -4,6 +4,10 @@
 #include <asm-i386/pagetable.h>
 #include <asm-i386/pagetable-2level.h>
 #include <asm-i386/fixmap.h>
+#include <linux/mmzone.h>
+#include <asm-i386/dma.h>
+#include <asm-i386/io.h>
+#include <linux/mm.h>
 
 /* 初始化一段固定的虚拟地址范围的页表, 也就是只为这段虚拟地址分配了页表，但是没有映射到物理页。参数：
 开始和结束的虚拟地址（start 和 end），以及页全局目录（pgd）的基地址 */
@@ -96,6 +100,10 @@ static void __init pagetable_init(void)
     fixrange_init(vaddr, 0, pgd_base);
 }
 
+/* 记录内存的结束帧号（需要这部分内存落在896M到4GB内存），
+这个变量的赋值是在HIGH_MEM相关代码中处理的，由于我们不支持，所以这个变量在我们这里无用 */
+unsigned long highend_pfn;
+
 /*进一步扩充页表映射 - 注意前 8MB 已经由 head.S 映射。
 还取消映射了虚拟内核地址 0 处的页面，这样我们就可以捕获内核中那些讨厌的 NULL 引用错误。 */
 void __init paging_init(void)
@@ -107,30 +115,24 @@ void __init paging_init(void)
     这确保了TLB与当前的%cr3指向的页目录保持同步 */
     __asm__("movl %%ecx,%%cr3\n" ::"c"(__pa(swapper_pg_dir)));
 
-    // __flush_tlb_all();
+    __flush_tlb_all();
 
-    // #ifdef CONFIG_HIGHMEM
-    //     kmap_init();
-    // #endif
-    //     {
-    //         unsigned long zones_size[MAX_NR_ZONES] = {0, 0, 0};
-    //         unsigned int max_dma, high, low;
+    {
+        unsigned long zones_size[MAX_NR_ZONES] = {0, 0, 0}; /* 存储每个内存区域的大小 */
+        unsigned int max_dma, high, low;                    /* max_dma 用于存储 DMA 区域的最大地址，high 和 low 用于存储系统中可用的最高和最低物理页帧号 */
 
-    //         max_dma = virt_to_phys((char *)MAX_DMA_ADDRESS) >> PAGE_SHIFT;
-    //         low = max_low_pfn;
-    //         high = highend_pfn;
+        max_dma = virt_to_phys((char *)MAX_DMA_ADDRESS) >> PAGE_SHIFT; /* 获取 DMA 区域的最大页帧号 */
+        low = max_low_pfn;                                             /* 设置 low 变量为内存管理系统可管理的最大物理页面号 */
+        high = highend_pfn;                                            /* 设置 high 变量为系统可用的最最高物理页帧号 */
 
-    //         if (low < max_dma)
-    //             zones_size[ZONE_DMA] = low;
-    //         else
-    //         {
-    //             zones_size[ZONE_DMA] = max_dma;
-    //             zones_size[ZONE_NORMAL] = low - max_dma;
-    // #ifdef CONFIG_HIGHMEM
-    //             zones_size[ZONE_HIGHMEM] = high - low;
-    // #endif
-    //         }
-    //         free_area_init(zones_size);
-    //     }
+        if (low < max_dma) /* low 小于 max_dma，则整个可用内存都在 DMA 区域内，因此 zones_size[ZONE_DMA] 被设置为 low。 */
+            zones_size[ZONE_DMA] = low;
+        else /* 否则，DMA 区域被设置为 max_dma，普通区域 ZONE_NORMAL 被设置为 low - max_dma。 */
+        {
+            zones_size[ZONE_DMA] = max_dma;
+            zones_size[ZONE_NORMAL] = low - max_dma;
+        }
+        free_area_init(zones_size); /* 完成管理内存节点的pglist结构体的初始化 */
+    }
     return;
 }

@@ -1,12 +1,19 @@
 #ifndef _BOOTMEM_H
 #define _BOOTMEM_H
 #include <linux/init.h>
+#include <linux/cache.h>
+#include <asm-i386/page.h>
+#include <asm-i386/dma.h>
+#include <linux/mmzone.h>
 
 extern void __init reserve_bootmem(unsigned long addr, unsigned long size);
 extern unsigned long __init init_bootmem(unsigned long addr, unsigned long memend);
 extern void __init free_bootmem(unsigned long addr, unsigned long size);
 
+/* bootmem.c */
 extern unsigned long max_low_pfn;
+
+/* bootmem.c */
 extern unsigned long min_low_pfn;
 
 /* 它与Linux内核在系统启动早期的内存分配有关。在系统启动并且内存管理子系统还没有完全初始化之前，
@@ -29,6 +36,17 @@ typedef struct bootmem_data
 /* mm/bootmem.c */
 extern void *__init __alloc_bootmem(unsigned long size, unsigned long align, unsigned long goal);
 
+/* mm/bootmem.c */
+extern void *__init __alloc_bootmem_node(pg_data_t *pgdat, unsigned long size, unsigned long align, unsigned long goal);
+
+/* 分配一定数量的低端内存页面。这里的“低端内存”通常指的是物理地址较低的内存区域，
+这部分内存通常由操作系统的早期引导代码所使用。参数 x 指定要分配的字节数。
+此宏调用 __alloc_bootmem 函数，将页面大小（PAGE_SIZE）作为对齐参数，以及 0 作为内存区域的起始地址。 */
 #define alloc_bootmem_low_pages(x) __alloc_bootmem((x), PAGE_SIZE, 0)
+
+/* 在特定的内存节点上分配引导内存。这是在NUMA（非统一内存访问）系统架构中常见的，
+pgdat 参数是对应的内存节点数据结构，而 x 是要分配的字节数。
+暂开后，SMP_CACHE_BYTES（32） 作为对齐参数，__pa(MAX_DMA_ADDRESS)（16MB） 作为分配起始地址。 */
+#define alloc_bootmem_node(pgdat, x) __alloc_bootmem_node((pgdat), (x), SMP_CACHE_BYTES, __pa(MAX_DMA_ADDRESS))
 
 #endif /* _BOOTMEM_H */

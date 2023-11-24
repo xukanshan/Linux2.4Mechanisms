@@ -122,7 +122,6 @@ void __init reserve_bootmem(unsigned long addr, unsigned long size)
     reserve_bootmem_core(contig_page_data.bdata, addr, size); /* 调用函数来保留内存 */
 }
 
-
 /* 用于在系统引导时分配内存,基本原理：扫描内存节点对应的引导内存分配器的位图来进行分配，
 但是这样的分配会引发内存碎片，所以在这个机制下又添加了内存分配合并策略，也就是传统的顺序分配。参数：
 bdata:指向引导内存分配器的指针。
@@ -258,4 +257,20 @@ void *__init __alloc_bootmem(unsigned long size, unsigned long align, unsigned l
     }
     BUG();       /* 如果所有节点都无法满足内存分配要求，函数会调用 BUG() 宏 */
     return NULL; /* 在发生错误时，函数返回 NULL，表示内存分配失败 */
+}
+
+/* 在某个内存节点上进行引导内存分配，参数：
+pgdat: 一个指向内存节点的指正。
+size: 要分配的内存大小。
+align: 内存对齐要求。
+goal: 分配的内存的目标起始地址 */
+void *__init __alloc_bootmem_node(pg_data_t *pgdat, unsigned long size, unsigned long align, unsigned long goal)
+{
+    void *ptr;
+
+    ptr = __alloc_bootmem_core(pgdat->bdata, size, align, goal);
+    if (ptr)
+        return (ptr);
+    BUG();
+    return NULL;
 }

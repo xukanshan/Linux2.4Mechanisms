@@ -101,5 +101,29 @@ extern void paging_init(void);
 /* 设定内核使用的页表表项属性位，通用设定 + 是否支持全局是能 */
 #define PAGE_KERNEL MAKE_GLOBAL(__PAGE_KERNEL)
 
+/* 刷新当前 CPU 的TLB，相比于__flush_tlb_global少了对cr4 pge的关闭与打开操作。
+当 PGE 位被设置时，标记为全局的页表项不会在 TLB 刷新时被移除，这允许操作系统在多个处理器间共享某些内存页而不需要频繁刷新 TLB，
+PGE没有被设置时，即使是标记为全局的页表项也会在 TLB 刷新过程中被移除。
+这种全局 TLB 刷新在多处理器系统中非常重要，因为它确保了所有处理器的 TLB 都被正确地更新 */
+#define __flush_tlb()                         \
+    do                                        \
+    {                                         \
+        unsigned int tmpreg;                  \
+                                              \
+        __asm__ __volatile__(                 \
+            "movl %%cr3, %0;  # flush TLB \n" \
+            "movl %0, %%cr3;              \n" \
+            : "=r"(tmpreg)::"memory");        \
+    } while (0)
+
+/* 这个属于#ifdef CONFIG_X86_PGE的 #else 下的 if(cpu_has_pge) 的else，
+#else与if(cpu_has_pge)都是调用了__flush_tlb_global。__flush_tlb只刷新当前cpu的tlb，
+而__flush_tlb_global是刷新所有cpu的tlb。*/
+#define __flush_tlb_all() \
+    do                    \
+    {                     \
+        __flush_tlb();    \
+    } while (0)
+
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_I386_PAGETABLE_H */
