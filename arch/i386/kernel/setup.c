@@ -159,6 +159,30 @@ void __init setup_memory_region(void)
 /* 系统最多能够处理6个ROM区域 */
 #define MAXROMS 6
 
+/* 每个元素代表了一个标准的I/O资源。I/O资源指的是系统中的I/O端口，
+这些端口被用于与特定的硬件设备进行通信。这些资源在系统启动时被注册，
+以确保操作系统能够正确地管理和使用这些硬件资源
+"dma1", 第一个DMA（直接内存访问）控制器。
+"pic1", 第一个PIC（可编程中断控制器）。
+"timer", 系统计时器。
+"keyboard", 键盘控制器。
+"dma page reg", DMA页面寄存器。
+"pic2", 第二个PIC。
+"dma2", 第二个DMA控制器。
+"fpu", 浮点单元 */
+struct resource standard_io_resources[] = {
+    {"dma1", 0x00, 0x1f, IORESOURCE_BUSY},
+    {"pic1", 0x20, 0x3f, IORESOURCE_BUSY},
+    {"timer", 0x40, 0x5f, IORESOURCE_BUSY},
+    {"keyboard", 0x60, 0x6f, IORESOURCE_BUSY},
+    {"dma page reg", 0x80, 0x8f, IORESOURCE_BUSY},
+    {"pic2", 0xa0, 0xbf, IORESOURCE_BUSY},
+    {"dma2", 0xc0, 0xdf, IORESOURCE_BUSY},
+    {"fpu", 0xf0, 0xff, IORESOURCE_BUSY}};
+
+/* 计算standard_io_resources数组中的元素数量 */
+#define STANDARD_IO_RESOURCES (sizeof(standard_io_resources) / sizeof(struct resource))
+
 /* 这个数组预定义了一些ROM区域，用于在系统初始化时被注册和管理。
 在这个定义中，有两个预定义的ROM资源：系统ROM：通常存放系统固件（如BIOS）。地址范围是 0xF0000 到 0xFFFFF。
 视频ROM：通常包含显卡的固件。地址范围是 0xc0000 到 0xc7fff。
@@ -166,6 +190,17 @@ void __init setup_memory_region(void)
 static struct resource rom_resources[MAXROMS] = {
     {"System ROM", 0xF0000, 0xFFFFF, IORESOURCE_BUSY},
     {"Video ROM", 0xc0000, 0xc7fff, IORESOURCE_BUSY}};
+
+/* 这个资源代表了内核代码所在的内存区域。起始地址0x100000（即1MB）是传统上x86架构中内核代码开始的地方。
+结束地址初始化为0，通常意味着它将在后续的代码中被设置 */
+static struct resource code_resource = {"Kernel code", 0x100000, 0};
+
+/* 这个资源代表内核数据区域。起始和结束地址都初始化为0，
+这表明它们将在后续的代码中被确定。内核数据区域通常包括全局变量、静态数据等 */
+static struct resource data_resource = {"Kernel data", 0, 0};
+
+/* 这个资源代表视频RAM区域。通常是显卡使用的内存区域。标志表示这个资源已经被占用，不能被分配 */
+static struct resource vram_resource = {"Video RAM area", 0xa0000, 0xbffff, IORESOURCE_BUSY};
 
 /* 探测系统中存在的ROM，并将其放入rom_resources对应的resource空位中，
 然后添加进入iomem_resources资源树中。这几个rom如下：
@@ -254,12 +289,6 @@ static void __init probe_roms(void)
 在链接脚本中定义标签，然后.c中extern char 标签，然后取标签地址。这是一个常见的做法，
 尤其是在嵌入式系统或操作系统的内核代码中。这样做可以让 C 代码访问链接脚本中定义的特定内存地址。*/
 extern char _text, _etext, _edata, _end;
-
-/* 用来表示内核代码段的资源，起始地址是1m，结束地址初始化为0 */
-static struct resource code_resource = {"Kernel code", 0x100000, 0};
-
-/* 用来表示内核数据段的资源 */
-static struct resource data_resource = {"Kernel data", 0, 0};
 
 void __init setup_arch(char **cmdline_p)
 {
@@ -395,8 +424,54 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
 
     /* 来进一步完善页面映射机制，并建立起内存页面管理机制。完成管理节点内存的pglist初始化 */
     paging_init();
-    
+
     /* 探测系统中存在的ROM，并将其放入rom_resources对应的resource空位中，
     然后添加进入iomem_resources资源树中 */
-    probe_roms();   
+    probe_roms();
+
+    /* 遍历e820映射表，将其对应的内存区域信息添加进入iomem_resource中，
+    其中0xf0000开始0x10000大小的区域已经在prob_roms中添加过了，这部分实际会添加失败 */
+    for (i = 0; i < e820.nr_map; i++)
+    {
+        struct resource *res; /* 用于指向要设定的resource结构体 */
+        /* 检查当前e820映射条目的地址加上大小是否超过了4GB的界限 */
+        if (e820.map[i].addr + e820.map[i].size > 0x100000000ULL)
+            continue;
+        res = alloc_bootmem_low(sizeof(struct resource)); /* 为一个新的资源结构分配内存 */
+        switch (e820.map[i].type)                         /* 根据e820映射条目的类型来设置资源的名称 */
+        {
+        /* e820条目的类型包括RAM、ACPI表、ACPI非易失性存储等 */
+        case E820_RAM:
+            res->name = "System RAM";
+            break;
+        case E820_ACPI:
+            res->name = "ACPI Tables";
+            break;
+        case E820_NVS:
+            res->name = "ACPI Non-volatile Storage";
+            break;
+        default:
+            res->name = "reserved";
+        }
+        res->start = e820.map[i].addr; /* 设置资源的起始 */
+        /* 设置资源的结束地址, 结束地址是起始地址加上大小减一，因为地址是从0开始计数的 */
+        res->end = res->start + e820.map[i].size - 1;
+        res->flags = IORESOURCE_MEM | IORESOURCE_BUSY; /* 标记为内存资源，并且是正在使用的 */
+        request_resource(&iomem_resource, res);        /* 将其注册到系统的iomem_resource资源树中 */
+        if (e820.map[i].type == E820_RAM)              /* 如果当前条目是RAM类型 */
+        {
+
+            /* 将其注册为代码资源和数据资源, 是为了标记内核代码和数据所在的内存区域。
+            因为我们不知道哪块RAM包含了内核数据，更精确的定位需要后面进行 */
+            request_resource(res, &code_resource);
+            request_resource(res, &data_resource);
+        }
+    }
+    /* 将显卡ram加入到iomem_resource树中 */
+    request_resource(&iomem_resource, &vram_resource);
+
+    /* 将所有的i[345]86机器会用到的io资源添加进入ioport_resource树中 */
+    for (i = 0; i < STANDARD_IO_RESOURCES; i++)
+        request_resource(&ioport_resource, standard_io_resources + i);
+
 }
