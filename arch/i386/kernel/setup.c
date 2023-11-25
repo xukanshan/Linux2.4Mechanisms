@@ -148,8 +148,105 @@ void __init setup_memory_region(void)
         add_memory_region(0, LOWMEMSIZE() < MEM_LOWER_K << 10 ? LOWMEMSIZE() : MEM_LOWER_K << 10, E820_RAM);
         add_memory_region(HIGH_MEMORY, MEM_UPPER_K << 10, E820_RAM);
     }
-    print_str("BIOS-provided physical RAM map:\n");
+    printk("BIOS-provided physical RAM map:\n");
     print_memory_map(who);
+}
+
+/* 0xaa55 是标准PC兼容机上用于标记有效ROM的签名。
+如果在指定地址 x 处的前两个字节是 0xaa55，这通常意味着这个地址是一个有效的ROM起始点。 */
+#define romsignature(x) (*(unsigned short *)(x) == 0xaa55)
+
+/* 系统最多能够处理6个ROM区域 */
+#define MAXROMS 6
+
+/* 这个数组预定义了一些ROM区域，用于在系统初始化时被注册和管理。
+在这个定义中，有两个预定义的ROM资源：系统ROM：通常存放系统固件（如BIOS）。地址范围是 0xF0000 到 0xFFFFF。
+视频ROM：通常包含显卡的固件。地址范围是 0xc0000 到 0xc7fff。
+这些预定义的资源可以通过 probe_roms 函数进一步探测和注册 */
+static struct resource rom_resources[MAXROMS] = {
+    {"System ROM", 0xF0000, 0xFFFFF, IORESOURCE_BUSY},
+    {"Video ROM", 0xc0000, 0xc7fff, IORESOURCE_BUSY}};
+
+/* 探测系统中存在的ROM，并将其放入rom_resources对应的resource空位中，
+然后添加进入iomem_resources资源树中。这几个rom如下：
+0xf0000-0xfffff 的 bios rom
+0xc0000-0xc7fff 的 video rom
+0xc8000-0xe0000 的 extension rom
+0xe0000-以上 的64KB 大小的 extension rom
+对照1m内存布局，起始探测的就是0xc0000到0xfffff结束的所有rom*/
+static void __init probe_roms(void)
+{
+    /* 用来跟踪发现的ROM数量，初始值设为1，
+    因为函数稍后会首先注册一块预定义的ROM区域 */
+    int roms = 1;
+    unsigned long base;      /* 用于存储将要检查的内存地址 */
+    unsigned char *romstart; /* 用于指向 base 地址处的内存 */
+
+    /* 将bios对应的rom添加进入iomem_resource树中 */
+    request_resource(&iomem_resource, rom_resources + 0);
+
+    /* 探测位于C000:0000 - C7FF:0000范围内的ROM, 每次增加2048字节（即2KB，这是ROM块的标准大小） */
+    for (base = 0xC0000; base < 0xE0000; base += 2048)
+    {
+        romstart = bus_to_virt(base); /*  将物理地址 base 转换为虚拟地址 */
+        if (!romsignature(romstart))  /* romstart 指向的位置是否有有效的ROM签名 */
+            continue;                 /* 如果没有，continue */
+        /* 如果找到有效的ROM签名，就证明这块区域的确是video rom，那么就将rom_resources中的video rom添加到iomem_resource树中 */
+        request_resource(&iomem_resource, rom_resources + roms);
+        roms++; /* 自增，表示又发现了一个ROM */
+        break;  /* 这意味着一旦找到第一个有效的视频ROM, 循环就会停止 */
+    }
+
+    /* 遍历从 0xC8000 到 0xE0000 的地址范围，每次增加 2048 字节（即2KB）。这个范围指定了扩展ROM可能存在的位置 */
+    for (base = 0xC8000; base < 0xE0000; base += 2048)
+    {
+        unsigned long length; /* 存储rom区域的长度 */
+
+        romstart = bus_to_virt(base); /* 函数将当前循环中的物理地址（base）转换为虚拟地址，并将其存储在 romstart 指针 */
+        if (!romsignature(romstart))  /* 检查 romstart 指向的地址是否包含有效的ROM签名 */
+            continue;
+        /* 计算ROM的长度。它读取 romstart 指向地址中第三个字节的值（romstart[2]），
+        并将这个值乘以 512。这是因为在许多ROM中，第三个字节指定了ROM大小的一部分（以512字节块为单位） */
+        length = romstart[2] * 512;
+        if (length)
+        {
+            unsigned int i;       /* 循环变量 */
+            unsigned char chksum; /* 存储校验和 */
+
+            chksum = 0;
+            /* 计算整个ROM的校验和。它将 romstart 指向的每个字节加到 chksum 变量中。校验和用于验证ROM数据的完整性 */
+            for (i = 0; i < length; i++)
+                chksum += romstart[i];
+
+            /* Good checksum? */
+            if (!chksum) /* chksum 的结果为0，表示校验和有效，这意味着ROM数据没有错误 */
+            {
+                rom_resources[roms].start = base;            /* rom_resources对应空位的resource结构体记录rom的起始位置 */
+                rom_resources[roms].end = base + length - 1; /* rom_resources对应空位的resource结构体记录记录rom的结束 */
+                rom_resources[roms].name = "Extension ROM";  /* rom_resources对应空位的resource结构体记录记录rom的名称 */
+                rom_resources[roms].flags = IORESOURCE_BUSY; /* rom_resources对应空位的resource结构体记录记录rom的类型 */
+                /* 将该rom对应的rom_resources中的resource添加到iomem_resources资源树中 */
+                request_resource(&iomem_resource, rom_resources + roms);
+                roms++;              /* 自增，表示又发现了一个ROM */
+                if (roms >= MAXROMS) /* 如果找到的ROM数量达到了 MAXROMS 的上限，函数将结束 */
+                    return;
+            }
+        }
+    }
+
+    /* base 变量设置为0xE0000。这个地址通常是系统中主板扩展ROM的标准地址 */
+    base = 0xE0000;
+    romstart = bus_to_virt(base); /* 将物理地址（在这里是 base）转换为内核可以直接访问的虚拟地址 */
+
+    if (romsignature(romstart)) /* 检查 romstart 指向的地址是否包含有效的ROM签名 */
+    {
+        rom_resources[roms].start = base;            /* rom_resources对应空位的resource结构体记录rom的起始位置 */
+        rom_resources[roms].end = base + 65535;      /* rom_resources对应空位的resource结构体记录记录rom的结束，共64KB大小 */
+        rom_resources[roms].name = "Extension ROM";  /* rom_resources对应空位的resource结构体记录记录rom的名称 */
+        rom_resources[roms].flags = IORESOURCE_BUSY; /* rom_resources对应空位的resource结构体记录记录rom的类型 */
+        /* 将该rom对应的rom_resources中的resource添加到iomem_resources资源树中 */
+        request_resource(&iomem_resource, rom_resources + roms);
+    }
 }
 
 /* 在链接脚本中使用 _text = .; _text 被定义为一个标签，它指向一个特定的内存地址。当声明 extern char _text;，
@@ -296,5 +393,10 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
     实际上，物理地址0附近的内存经常被标记为E820_RESERVED，但由于其特殊性，Linux内核选择明确地保留它 */
     reserve_bootmem(0, PAGE_SIZE);
 
-    paging_init(); /* 来进一步完善页面映射机制，并建立起内存页面管理机制 */
+    /* 来进一步完善页面映射机制，并建立起内存页面管理机制。完成管理节点内存的pglist初始化 */
+    paging_init();
+    
+    /* 探测系统中存在的ROM，并将其放入rom_resources对应的resource空位中，
+    然后添加进入iomem_resources资源树中 */
+    probe_roms();   
 }

@@ -105,7 +105,8 @@ static void __init pagetable_init(void)
 unsigned long highend_pfn;
 
 /*进一步扩充页表映射 - 注意前 8MB 已经由 head.S 映射。
-还取消映射了虚拟内核地址 0 处的页面，这样我们就可以捕获内核中那些讨厌的 NULL 引用错误。 */
+还取消映射了虚拟内核地址 0 处的页面，这样我们就可以捕获内核中那些讨厌的 NULL 引用错误。
+还完成管理内存节点的pglist结构体的初始化 */
 void __init paging_init(void)
 {
     /* 扩充由startup_32在第一阶段创建页目录表和页表到线性映射的结束位置，并且初始化用于固定映射的虚拟地址的页表 */

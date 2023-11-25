@@ -14,4 +14,25 @@ typedef struct
 #define SPIN_LOCK_UNLOCKED \
     (spinlock_t) {}
 
+/* 描述了自旋锁，属于 #ifdef CONFIG_SMP 的 #else 下 #if (__GNUC__ > 2)，
+为什么定义成空结构体，原因与spinlock_t定义成空结构体相同 */
+typedef struct
+{
+} rwlock_t;
+
+/* 初始化一个读写锁（定义成空结构体）为解锁状态，
+这个宏实际上创建了一个空的rwlock_t实例 */
+#define RW_LOCK_UNLOCKED \
+    (rwlock_t) {}
+
+/* 属于 #ifdef CONFIG_SMP 的 #else 下 #if，这个宏用于读写锁的写者上锁，但是实际是什么都没有做，
+lock 被转换为 void 类型。这实际上是一种通用的方法来显式地忽略一个变量或参数，避免编译器警告 unused variable */
+#define write_lock(lock) (void)(lock)
+
+/* 属于 #ifdef CONFIG_SMP 的 #else 下 #if，这个宏用于读写锁的写者解锁，但是实际是什么都没有做 */
+#define write_unlock(lock) \
+    do                     \
+    {                      \
+    } while (0)
+
 #endif /* _LINUX_SPINLOCK_H */

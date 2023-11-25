@@ -2,6 +2,7 @@
 #include <linux/smp_lock.h>
 #include <linux/init.h>
 
+/* arch/i386/kernel/setup.c */
 extern void setup_arch(char **);
 
 asmlinkage void __init start_kernel(void)
