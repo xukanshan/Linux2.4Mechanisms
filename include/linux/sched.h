@@ -64,7 +64,13 @@ struct mm_struct
         /* .mmlist = LIST_HEAD_INIT(name.mmlist), */          \
     }
 
-/* 声明swapper的mm_struct */
+/* arch/i386/kernel/init_task.c */
 extern struct mm_struct init_mm;
+
+/* arch/i386/kernel/trap.c */
+extern void trap_init(void);
+
+/* arch/i386/kernel/sched.h */
+extern void cpu_init (void);
 
 #endif /* _LINUX_SCHED_H */
