@@ -3,6 +3,7 @@
 #include <asm-i386/segment.h>
 #include <linux/stddef.h>
 #include <asm-i386/hw-irq.h>
+#include <linux/sched.h>
 
 /* idt表，包含256个中断门描述符，在Linux2.4中，这里还指定了段名字，
 以在链接时指定页面对齐，来简化对奔腾 F0 0F 故障的解决方法，但我们这里没有必要
@@ -61,6 +62,7 @@ static void __init set_system_gate(unsigned int n, void *addr)
     _set_gate(idt_table + n, 15, 3, addr);
 }
 
+
 void __init trap_init(void)
 {
     /* 这些全部都是在进行异常处理函数设置，很多异常不属于主要机制，故用NULL替代 */
@@ -86,13 +88,7 @@ void __init trap_init(void)
     set_trap_gate(19, NULL);  /* 原：&simd_coprocessor_error，SIMD 协处理器错误的处理 */
     /* 原：&system_call，设置系统调用的处理。允许用户空间程序通过一个特定的中断来请求内核服务 */
     set_system_gate(SYSCALL_VECTOR, NULL);
-
-    /* Linux操作系统本身并不使用调用门，但是有些Unix变种已经用了调用门来实现系统调用，如
-    iBCS和Solaris/x86。为了与这些系统上编译的应用程序可执行代码相兼容，这两句
-    通过设置本地描述符表（LDT）来支持与特定系统兼容的系统调用*/
-    // set_call_gate(&default_ldt[0], lcall7);
-    // set_call_gate(&default_ldt[4], lcall27);
-
+    
     cpu_init();
 
 #ifdef CONFIG_X86_VISWS_APIC

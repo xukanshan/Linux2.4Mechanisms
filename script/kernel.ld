@@ -32,16 +32,13 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 	{
 		*(.data)
 		*(.rodata)
-		. = ALIGN(8192);                        /* 这里设定8k对齐，是为了让后面的.data.init_task 8k起始，不仅因为Linux2.4中一个task_struct与内核栈
-                                                共享8k，所以起始地址也是8k对齐，也是为了规避grub的error: overlap detected错误 */
 	}
     _edata = .;			                        /* 数据段结束，我也不知道为什么linux2.4放在了这个位置，没有包含诸如.data.init_task这样的数据段 */
     .data.init_task : AT(ADDR(.data.init_task) - 0xC0000000)    
     {
-        *(.data.init_task)
-                                                /* 这个段对应init_task_union变量，本就是8K大小，结束地址不对齐也可。 */
-    }                                           /* 这里如果设定了结束地址8K对齐，那么这个这个段的起始地址也必须8K对齐，否则grub会报error: overlap detected */
-                                                /* 换句话说，这个结束地址8K对齐决定了前一个段的结束地址也必须8K对齐 */
+        . = ALIGN(8192);                        /* init_task_union作为swapper的task_struct，必须8K对齐起始 */
+        *(.data.init_task)           
+    }                                          
     PROVIDE( __bss_start = . );
 	.bss : AT(ADDR(.bss) - 0xC0000000)
 	{

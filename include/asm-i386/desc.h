@@ -16,6 +16,29 @@ struct desc_struct
 {
     unsigned long a, b;
 };
-#endif /* !__ASSEMBLY__ */
 
+/* 定义第一个LDT对应的GDT描述符在GDT表中的偏移 */
+#define __FIRST_LDT_ENTRY (__FIRST_TSS_ENTRY + 1)
+
+/* 利用给定的LDT编号n来计算在GDT中的索引位置 */
+#define __LDT(n) (((n) << 2) + __FIRST_LDT_ENTRY)
+
+/* 这两个都定义在head.S中，定义的是要加载进入GDTR与IDTR的48位数据 */
+extern struct desc_struct *idt, *gdt;
+
+/* 用于表示要加载进入GDRT与IDTR的48位数据的结构 */
+struct Xgt_desc_struct
+{
+    unsigned short size;
+    unsigned long address __attribute__((packed));
+};
+
+/* gdt指向48位要加载进入GDTR数组中的偏移两字节的位置（head.S中的SYMBOL_NAME(gdt)），
+所以地址要-2字节指向48位要加载数据的起始 */
+#define gdt_descr (*(struct Xgt_desc_struct *)((char *)&gdt - 2))
+
+/* 同上gdt_descr的解释 */
+#define idt_descr (*(struct Xgt_desc_struct *)((char *)&idt - 2))
+
+#endif /* !__ASSEMBLY__ */
 #endif /* _ASM_I386_DESC_H */

@@ -188,13 +188,13 @@ ignore_int:
 .globl SYMBOL_NAME(gdt)						/* 将表示gdt表地址的标号全局化 */
 
 ALIGN										
-	.word 0									/* 填充4字节0作为分割 */
+	.word 0									/* 填充2字节0作为分割 */
 idt_descr:									/* 定义加载进入idtr的数据 */
 	.word IDT_ENTRIES * 8 - 1				/* 前2字节，idt表界限，为idt表大小-1 */
 SYMBOL_NAME(idt):
 	.long SYMBOL_NAME(idt_table)			/* 后4字节，idt表的位置, idt表定义在trap.c中 */
 	
-	.word 0									/* 填充4字节0作为分割 */
+	.word 0									/* 填充2字节0作为分割 */
 gdt_descr:									/* 定义加载进入gdtr的数据 */
 	.word GDT_ENTRIES * 8 - 1				/* 前2字节，gdt表界限，为gdt表大小-1 */
 SYMBOL_NAME(gdt):							

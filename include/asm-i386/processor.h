@@ -1,6 +1,11 @@
 #ifndef _ASM_I386_PROCESSOR_H
 #define _ASM_I386_PROCESSOR_H
 
+#include <linux/sched.h>
+#include <asm-i386/segment.h>
+#include <asm-i386/desc.h>
+#include <linux/threads.h>
+
 #define IO_BITMAP_SIZE 32
 
 /* tss的结构 */
@@ -36,6 +41,14 @@ struct tss_struct
     unsigned long __cacheline_filler[5];
 };
 
+/* 初始化时候用的栈顶，就是那个swapper进程的pcb的8KB末尾 */
+#define init_stack (init_task_union.stack)
+
+/* I/O 位图在 TSS 结构体的末尾，并通过 bitmap 字段指定其在 TSS 中的偏移量，
+当 bitmap 字段设置为 INVALID_IO_BITMAP_OFFSET(估计是超过了TSS对应的GDT描述符limit)时，
+表示 TSS 中没有有效的 I/O 位图 */
+#define INVALID_IO_BITMAP_OFFSET 0x8000
+
 /* 用于初始化一个 tss_struct 结构体的实例 */
 #define INIT_TSS                                                           \
     {                                                                      \
@@ -53,7 +66,10 @@ struct tss_struct
             0, INVALID_IO_BITMAP_OFFSET,            /* tace, bitmap */     \
         {                                                                  \
             ~0,                                                            \
-        } /* ioperm */                                                     \
+        } /* ioperm(permission) */                                         \
     }
+
+/* arch/i386/kernel/init_task.c */
+extern struct tss_struct init_tss[NR_CPUS];
 
 #endif /* _ASM_I386_PROCESSOR_H */

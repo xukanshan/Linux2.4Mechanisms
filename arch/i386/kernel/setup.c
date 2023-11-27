@@ -8,6 +8,12 @@
 #include <asm-i386/page.h>
 #include <linux/bootmem.h>
 #include <linux/smp.h>
+#include <asm-i386/processor.h>
+#include <asm-i386/bitops.h>
+#include <asm-i386/system.h>
+#include <asm-i386/desc.h>
+#include <asm-i386/atomic.h>
+#include <asm-i386/current.h>
 
 /* 用于存储grub返回的multiboot_t结构体的地址，
 我懒得为这个变量单独写个c文件，就放在这里吧, 因为主要就是这个文件中的代码会用到
@@ -476,78 +482,70 @@ initrd(Initial RAM Disk) 是一个在内核启动初期加载到 RAM 的临时�
         request_resource(&ioport_resource, standard_io_resources + i);
 }
 
+/* 用于表示每个cpu是否已经被初始化的位图 */
+static unsigned long cpu_initialized __initdata = 0;
+
 /*cpu_init() 函数初始化每个 CPU 的状态。有些数据在引导过程中已经自然初始化了，
 比如 GDT（全局描述符表）和 IDT（中断描述符表）。尽管如此，我们还是重新加载它们，
 这个函数充当一个“CPU 状态屏障”，不应该有任何状态穿越过来。*/
-
 void __init cpu_init(void)
 {
-    int nr = smp_processor_id(); /* 获取当前 CPU 的编号 */
-    struct tss_struct *t = &init_tss[nr];
+    int nr = smp_processor_id();          /* 获取当前 CPU 的编号 */
+    struct tss_struct *t = &init_tss[nr]; /* 指向当前cpu的tss，其已初始化 */
 
+    /* 检查当前 CPU 是否已经初始化 */
     if (test_and_set_bit(nr, &cpu_initialized))
     {
-        printk("CPU#%d already initialized!\n", nr);
-        for (;;)
-            __sti();
+        /* 如果进入，说明该cpu已经被初始化，这是有问题的！ */
+        printk("CPU#%d already initialized!\n", nr); /* 打印信息，提醒cpu已经被初始化 */
+        for (;;)                                     /* 进入一个无限循环 */
+            __sti();                                 /* 同时启用中断，所以能够参与调度 */
     }
     printk("Initializing CPU#%d\n", nr);
 
-    if (cpu_has_vme || cpu_has_tsc || cpu_has_de)
-        clear_in_cr4(X86_CR4_VME | X86_CR4_PVI | X86_CR4_TSD | X86_CR4_DE);
-#ifndef CONFIG_X86_TSC
-    if (tsc_disable && cpu_has_tsc)
-    {
-        printk("Disabling TSC...\n");
-        /**** FIX-HPA: DOES THIS REALLY BELONG HERE? ****/
-        clear_bit(X86_FEATURE_TSC, boot_cpu_data.x86_capability);
-        set_in_cr4(X86_CR4_TSD);
-    }
-#endif
-
+    /* 重新加载ldt，gdt_descr定义在 */
     __asm__ __volatile__("lgdt %0" : "=m"(gdt_descr));
+
+    /* 重新加载idt，idt_descr定义在 */
     __asm__ __volatile__("lidt %0" : "=m"(idt_descr));
 
-    /*
-     * Delete NT
-     */
+    /* 清除了标志寄存器中的 NT 位，它用于控制任务的嵌套 */
     __asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
 
-    /*
-     * set up and load the per-CPU TSS and LDT
-     */
-    atomic_inc(&init_mm.mm_count);
+    atomic_inc(&init_mm.mm_count); /* 增加 init_mm的引用计数 */
+    /* 将当前正在运行的进程的活动内存管理结构设置为 init_mm,
+    其实swapper 的 task_struct 的 active_mm 早就被指向了init_mm*/
     current->active_mm = &init_mm;
-    if (current->mm)
+    if (current->mm) /* 检查当前进程的内存管理结构是否为非空，非空代表错误 */
         BUG();
-    enter_lazy_tlb(&init_mm, current, nr);
+    //     enter_lazy_tlb(&init_mm, current, nr);
 
-    t->esp0 = current->thread.esp0;
-    set_tss_desc(nr, t);
-    gdt_table[__TSS(nr)].b &= 0xfffffdff;
-    load_TR(nr);
-    load_LDT(&init_mm);
+    //     t->esp0 = current->thread.esp0;
+    //     set_tss_desc(nr, t);
+    //     gdt_table[__TSS(nr)].b &= 0xfffffdff;
+    //     load_TR(nr);
+    //     load_LDT(&init_mm);
 
-    /*
-     * Clear all 6 debug registers:
-     */
+    //     /*
+    //      * Clear all 6 debug registers:
+    //      */
 
-#define CD(register) __asm__("movl %0,%%db" #register ::"r"(0));
+    // #define CD(register) __asm__("movl %0,%%db" #register ::"r"(0));
 
-    CD(0);
-    CD(1);
-    CD(2);
-    CD(3); /* no db4 and db5 */
-    ;
-    CD(6);
-    CD(7);
+    //     CD(0);
+    //     CD(1);
+    //     CD(2);
+    //     CD(3); /* no db4 and db5 */
+    //     ;
+    //     CD(6);
+    //     CD(7);
 
-#undef CD
+    // #undef CD
 
-    /*
-     * Force FPU initialization:
-     */
-    current->flags &= ~PF_USEDFPU;
-    current->used_math = 0;
-    stts();
+    //     /*
+    //      * Force FPU initialization:
+    //      */
+    //     current->flags &= ~PF_USEDFPU;
+    //     current->used_math = 0;
+    //     stts();
 }
