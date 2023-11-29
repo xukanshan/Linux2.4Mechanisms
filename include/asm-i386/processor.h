@@ -3,7 +3,6 @@
 
 #include <linux/sched.h>
 #include <asm-i386/segment.h>
-#include <asm-i386/desc.h>
 #include <linux/threads.h>
 
 #define IO_BITMAP_SIZE 32
@@ -49,7 +48,20 @@ struct tss_struct
 表示 TSS 中没有有效的 I/O 位图 */
 #define INVALID_IO_BITMAP_OFFSET 0x8000
 
-/* 用于初始化一个 tss_struct 结构体的实例 */
+/* 以下三条与desc.h定义的大写同名宏相同，只是为了解决processor.h循环包含问题，
+具体见INIT_TSS注释。暂时这样 */
+#define __first_tss_entry 12
+#define __firtst_ldt_entry (__first_tss_entry + 1)
+#define __ldt(n) (((n) << 2) + __firtst_ldt_entry)
+
+/* 用于初始化一个 tss_struct 结构体的实例，
+这里的__LDT定义在desc.h中，其中使用了__LDT，我利用手动排查的方式，
+发现linux2.4的processor.h竟然没有直接或间接引用desc.h。我不知道如何处理，
+就在processor.h中包含了desc.h，但是desc.h中又定义了load_LDT，其中有个关于struct mm_struct的指针解引用，
+所以我又在desc.h中包含了sched.h（不包含编译器报错）。这样我就形成了一条循环包含路径：
+sched.h->processor.h->desc.h->sched.h，而Linux2.4只有sched.h->processor.h这样一条路径。
+我不知道Linux2.4是怎么处理这种头文件已经事实上形成了循环使用，而形式上没有（没表现出循环#include），
+但是还能编译成功。所以这里的的__LDT我替换成了在这个头文件内部使用的__ldt与__LDT本质相同 */
 #define INIT_TSS                                                           \
     {                                                                      \
         0, 0,                                       /* back_link, __blh */ \
@@ -62,7 +74,7 @@ struct tss_struct
             0, 0, 0, 0,                             /* esp,ebp,esi,edi */  \
             0, 0, 0, 0, 0, 0,                       /* es,cs,ss */         \
             0, 0, 0, 0, 0, 0,                       /* ds,fs,gs */         \
-            __LDT(0), 0,                            /* ldt */              \
+            __ldt(0), 0,                            /* ldt */              \
             0, INVALID_IO_BITMAP_OFFSET,            /* tace, bitmap */     \
         {                                                                  \
             ~0,                                                            \
@@ -71,5 +83,47 @@ struct tss_struct
 
 /* arch/i386/kernel/init_task.c */
 extern struct tss_struct init_tss[NR_CPUS];
+
+/* 这个结构体是进程的上下文切换时保存和恢复 CPU 状态的关键部分。
+它包含了执行线程所需的所有 CPU 信息，确保线程能够正确地保存和继续执行 */
+struct thread_struct
+{
+    /* 这是内核模式下的栈指针。当从用户模式切换到内核模式时，CPU 使用这个值作为栈指针 */
+    unsigned long esp0;
+    unsigned long eip;
+    unsigned long esp;
+    unsigned long fs;
+    unsigned long gs;
+    unsigned long debugreg[8]; /* 这是硬件调试寄存器，用于设置断点和执行跟踪等调试操作 */
+    /* 些字段用于存储异常或故障的详细信息。
+    cr2 存储引起页错误的地址，trap_no 是异常号，error_code 是与异常相关的错误代码 */
+    unsigned long cr2, trap_no, error_code;
+    /* 这是用于存储浮点单元（FPU）状态的联合体。它包括保存所有浮点寄存器、控制和状态寄存器的信息 */
+    // union i387_union i387;
+    /* 如果线程在 virtual 8086 模式下运行，这个指针会指向相关信息的结构体。
+    Virtual 8086 模式允许在保护模式下运行实模式（8086 模式）程序 */
+    // struct vm86_struct *vm86_info;
+    // unsigned long screen_bitmap; /* 在虚拟 8086 模式下，这可能用于存储屏幕映射信息 */
+    /* 这些字段也是用于虚拟 8086 模式的，用于存储各种模式特定的标志和状态信息 */
+    // unsigned long v86flags, v86mask, v86mode, saved_esp0;
+    /* 输入/输出权限的标记。这决定了线程可以访问哪些 I/O 端口 */
+    int ioperm;
+    /* I/O 位图，用于管理线程对 I/O 端口的访问权限。这个位图直接映射到每个端口的访问权限 */
+    unsigned long io_bitmap[IO_BITMAP_SIZE + 1];
+};
+
+/* 用于初始化一个struct thread_struct实例 */
+#define INIT_THREAD                                                \
+    {                                                              \
+        0,                                                         \
+            0, 0, 0, 0,                                            \
+            {[0 ... 7] = 0}, /* debugging registers */             \
+            0, 0, 0,                                               \
+            /* {{0,},}, */ /* 387 state */ /* 0, 0, 0, 0, 0, 0, */ \
+            0,                                                     \
+        {                                                          \
+            ~0,                                                    \
+        } /* io permissions */                                     \
+    }
 
 #endif /* _ASM_I386_PROCESSOR_H */

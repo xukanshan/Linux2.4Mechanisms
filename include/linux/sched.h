@@ -3,9 +3,15 @@
 
 #include <asm-i386/atomic.h>
 #include <linux/stddef.h>
+#include <asm-i386/processor.h>
+#include <asm-i386/mmu.h>
 
 /* 定义了初始化时候使用的栈大小，共8K */
 #define INIT_TASK_SIZE 2048 * sizeof(long)
+
+/* task_struct的flags一个标志位，用于表示在当前的调度周期（或“量子”）中，
+该任务是否使用过浮点单元（FPU，Floating Point Unit）*/
+#define PF_USEDFPU 0x00100000 /* task used FPU this quantum (SMP) */
 
 /* 进程或线程的身份证 */
 struct task_struct
@@ -15,7 +21,7 @@ struct task_struct
 
     /* 基本进程状态和控制信息 */
     // volatile long state; /* 进程的状态。可能的值有 -1（不可运行）、0（可运行）、>0（已停止） */
-    // unsigned long flags; /* 进程标志，用于表示不同的进程状态或属性 */
+    unsigned long flags; /* 进程标志，用于表示不同的进程状态或属性 */
     // int sigpending;      /* 表示是否有未处理的信号 */
     /* 进程的地址空间限制。用于区分用户态线程和内核线程的地址空间,
     0-0xBFFFFFFF for user-thead, 0-0xFFFFFFFF for kernel-thread */
@@ -92,7 +98,7 @@ struct task_struct
 
     /* 资源限制和其他信息 */
     // struct rlimit rlim[RLIM_NLIMITS]; /* 资源限制数组 */
-    // unsigned short used_math;         /* 是否使用了数学协处理器 */
+    unsigned short used_math;         /* 是否使用了数学协处理器 */
     // char comm[16];                    /* 进程名称 */
 
     /* 文件系统和信号处理 */
@@ -101,7 +107,7 @@ struct task_struct
     // unsigned int locks;       /* 持有的文件锁数量 */
     // struct sem_undo *semundo; /* IPC 信号量信息 */
     // struct sem_queue *semsleeping;
-    // struct thread_struct thread; /* CPU 特定的状态信息 */
+    struct thread_struct thread; /* 进程的上下文切换时保存和恢复 CPU 状态的关键部分 */
     // struct fs_struct *fs;        /* 文件系统信息 */
     // struct files_struct *files;  /* 打开文件信息 */
     // spinlock_t sigmask_lock;     /* 信号掩码锁 */
@@ -121,42 +127,19 @@ struct task_struct
 };
 
 /* 在启动阶段初始化swapper 的 task_struct  */
-#define INIT_TASK(tsk)                                                           \
-    {                                                                            \
-        /* .state = 0, */                                                        \
-        /* .flags = 0, */                                                        \
-        /* .sigpending = 0, */                                                   \
-        /* .addr_limit = KERNEL_DS, */                                           \
-        /* .exec_domain = &default_exec_domain, */                               \
-        /* .lock_depth = -1, */                                                  \
-        /* .counter = DEF_COUNTER, */                                            \
-        /* .nice = DEF_NICE, */                                                  \
-        /* .policy = SCHED_OTHER, */                                             \
-        .mm = NULL,                                                              \
-        .active_mm = &init_mm,                                                   \
-        /* .cpus_allowed = -1, */                                                \
-        /* .run_list = LIST_HEAD_INIT(tsk.run_list), */                          \
-        /* .next_task = &tsk, */                                                 \
-        /* .prev_task = &tsk, */                                                 \
-        /* .p_opptr = &tsk, */                                                   \
-        /* .p_pptr = &tsk, */                                                    \
-        /* .thread_group = LIST_HEAD_INIT(tsk.thread_group), */                  \
-        /* .wait_chldexit = __WAIT_QUEUE_HEAD_INITIALIZER(tsk.wait_chldexit), */ \
-        /* .real_timer = {.function = it_real_fn}, */                            \
-        /* .cap_effective = CAP_INIT_EFF_SET, */                                 \
-        /* .cap_inheritable = CAP_INIT_INH_SET, */                               \
-        /* .cap_permitted = CAP_FULL_SET, */                                     \
-        /* .keep_capabilities = 0, */                                            \
-        /* .rlim = INIT_RLIMITS, */                                              \
-        /* .user = INIT_USER, */                                                 \
-        /* .comm = "swapper", */                                                 \
-        /* .thread = INIT_THREAD, */                                             \
-        /* .fs = &init_fs, */                                                    \
-        /* .files = &init_files, */                                              \
-        /* .sigmask_lock = SPIN_LOCK_UNLOCKED, */                                \
-        /* .sig = &init_signals, */                                              \
-        /* .pending = {NULL, &tsk.pending.head, {{0}}}, */                       \
-        /* .blocked = {{0}}, .alloc_lock = SPIN_LOCK_UNLOCKED */                 \
+#define INIT_TASK(tsk)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
+    {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
+        /* .state = 0, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+        .flags = 0, /* .sigpending = 0, */ /* .addr_limit = KERNEL_DS, */ /* .exec_domain = &default_exec_domain, */ /* .lock_depth = -1, */ /* .counter = DEF_COUNTER, */ /* .nice = DEF_NICE, */ /* .policy = SCHED_OTHER, */                                                                                                                                                                                                                                                                                                                                                                                             \
+            .mm = NULL,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
+        .active_mm = &init_mm, /* .cpus_allowed = -1, */ /* .run_list = LIST_HEAD_INIT(tsk.run_list), */ /* .next_task = &tsk, */ /* .prev_task = &tsk, */ /* .p_opptr = &tsk, */ /* .p_pptr = &tsk, */ /* .thread_group = LIST_HEAD_INIT(tsk.thread_group), */ /* .wait_chldexit = __WAIT_QUEUE_HEAD_INITIALIZER(tsk.wait_chldexit), */ /* .real_timer = {.function = it_real_fn}, */ /* .cap_effective = CAP_INIT_EFF_SET, */ /* .cap_inheritable = CAP_INIT_INH_SET, */ /* .cap_permitted = CAP_FULL_SET, */ /* .keep_capabilities = 0, */ /* .rlim = INIT_RLIMITS, */ /* .user = INIT_USER, */ /* .comm = "swapper", */ \
+            .thread = INIT_THREAD,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
+        /* .fs = &init_fs, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
+        /* .files = &init_files, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
+        /* .sigmask_lock = SPIN_LOCK_UNLOCKED, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
+        /* .sig = &init_signals, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
+        /* .pending = {NULL, &tsk.pending.head, {{0}}}, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
+        /* .blocked = {{0}}, .alloc_lock = SPIN_LOCK_UNLOCKED */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
     }
 
 /*
@@ -190,8 +173,7 @@ struct mm_struct
     // unsigned long cpu_vm_mask;                                /*  CPU虚拟内存掩码，用于处理器特定的内存管理 */
     // unsigned long swap_cnt;                                   /* 记录下一次交换操作要交换的页面数 */
     // unsigned long swap_address;                               /* 用于交换操作的地址 */
-
-    // mm_context_t context; /* 体系结构特定的内存管理上下文，用于存储与特定硬件平台相关的信息 */
+    mm_context_t context; /* 体系结构特定的内存管理上下文，用于存储与特定硬件平台相关的信息 */
 };
 
 /* 该宏用于初始化一个mm_struct。

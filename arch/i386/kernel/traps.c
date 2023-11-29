@@ -1,9 +1,9 @@
-#include <asm-i386/desc.h>
 #include <linux/init.h>
 #include <asm-i386/segment.h>
 #include <linux/stddef.h>
 #include <asm-i386/hw-irq.h>
 #include <linux/sched.h>
+#include <asm-i386/desc.h>
 
 /* idt表，包含256个中断门描述符，在Linux2.4中，这里还指定了段名字，
 以在链接时指定页面对齐，来简化对奔腾 F0 0F 故障的解决方法，但我们这里没有必要
@@ -62,7 +62,44 @@ static void __init set_system_gate(unsigned int n, void *addr)
     _set_gate(idt_table + n, 15, 3, addr);
 }
 
+/* 用于在内存中设置任务状态段（TSS）或局部描述符表（LDT）的描述符, 参数：
+n：要设定的描述符相对于GDT表的起始偏移。
+addr：描述符要指向的地址。
+limit：描述符的limit字段。
+type：描述符的类型 */
+#define _set_tssldt_desc(n, addr, limit, type) \
+    __asm__ __volatile__("movw %w3,0(%2)\n\t"  \
+                         "movw %%ax,2(%2)\n\t" \
+                         "rorl $16,%%eax\n\t"  \
+                         "movb %%al,4(%2)\n\t" \
+                         "movb %4,5(%2)\n\t"   \
+                         "movb $0,6(%2)\n\t"   \
+                         "movb %%ah,7(%2)\n\t" \
+                         "rorl $16,%%eax"      \
+                         : "=m"(*(n)) : "a"(addr), "r"(n), "ir"(limit), "i"(type))
 
+/* 在GDT中设置一个描述符指向tss，参数：
+n：表明是cpu的编号（因为tss是一个cpu一个）
+addr：tss的地址 */
+void set_tss_desc(unsigned int n, void *addr)
+{
+    /* 调用函数来完成gdt表对应的描述符设置 */
+    _set_tssldt_desc(gdt_table + __TSS(n), (int)addr, 235, 0x89);
+}
+
+/* 默认的LDT表 */
+struct desc_struct default_ldt[] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+
+/* 在GDT中设置一个描述符指向ldt，参数：
+n：表明是cpu的编号（因为ldtr是一个cpu一个）
+addr：ldt的地址
+size: ldt内的条目数量 */
+void set_ldt_desc(unsigned int n, void *addr, unsigned int size)
+{
+    _set_tssldt_desc(gdt_table + __LDT(n), (int)addr, ((size << 3) - 1), 0x82);
+}
+
+/* 设定intel cpu的保留中断与系统调用中断，为每个cpu设置必要的状态和环境 */
 void __init trap_init(void)
 {
     /* 这些全部都是在进行异常处理函数设置，很多异常不属于主要机制，故用NULL替代 */
@@ -88,12 +125,6 @@ void __init trap_init(void)
     set_trap_gate(19, NULL);  /* 原：&simd_coprocessor_error，SIMD 协处理器错误的处理 */
     /* 原：&system_call，设置系统调用的处理。允许用户空间程序通过一个特定的中断来请求内核服务 */
     set_system_gate(SYSCALL_VECTOR, NULL);
-    
-    cpu_init();
 
-#ifdef CONFIG_X86_VISWS_APIC
-    superio_init();
-    lithium_init();
-    cobalt_init();
-#endif
+    cpu_init(); /* 每个 CPU 设置必要的状态和环境 */
 }

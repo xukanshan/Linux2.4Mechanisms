@@ -1,4 +1,13 @@
+// #include <linux/mm.h>
+// #include <linux/sched.h>
+// #include <linux/init.h>
+
+// #include <asm-i386/pagetable.h>
+// #include <asm-i386/desc.h>
+
+
 #include <linux/sched.h>
+#include <asm-i386/desc.h>
 #include <asm-i386/processor.h>
 #include <linux/threads.h>
 #include <linux/cache.h>

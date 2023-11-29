@@ -1,4 +1,10 @@
-                                         /* 符合Multiboot规范的 OS 映象需要这样一个 magic Multiboot 头, 
+#include <linux/threads.h>
+#include <linux/linkage.h>
+#include <asm-i386/segment.h>
+#include <asm-i386/page.h>					/* 引入__PAGE_OFFSET */
+#include <asm-i386/pagetable.h>				/* 引入BOOT_USER_PGD_PTRS 和 BOOT_KERNEL_PGD_PTRS */
+#include <asm-i386/desc.h>
+                                         	/* 符合Multiboot规范的 OS 映象需要这样一个 magic Multiboot 头, 
                                             只有用这个开头, grub才能引导内核映像
                                             Multiboot 头的分布必须如下表所示：
                                             ----------------------------------------------------------
@@ -32,9 +38,7 @@ _stext:  	                                /* 仿照Linux，用_stext与stext记�
 .long MBOOT_HEADER_MAGIC                    /* GRUB 会通过这个魔数判断该映像是否支持 */
 .long MBOOT_HEADER_FLAGS                    /* GRUB 的一些加载时选项 */
 .long MBOOT_CHECKSUM                        /* 检测数值 */
-                                
-#include <linux/linkage.h> 
-
+                                 
 ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(链接脚本使用了这个符号来作为链接后的内核映像入口地址) */
     ljmp $0x10, $0x101000                   /* 通过长跳转进入startup_32, rip的值确定是查看kernel.map中的.text的加载地址，实际是由我们的
                                             kernel.ld决定的 */
@@ -61,11 +65,6 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
 											*/
                                             /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3) */
 .section .text
-#include <asm-i386/segment.h>
-#include <asm-i386/page.h>					/* 引入__PAGE_OFFSET */
-#include <asm-i386/pagetable.h>				/* 引入BOOT_USER_PGD_PTRS 和 BOOT_KERNEL_PGD_PTRS */
-#include <asm-i386/desc.h>
-#include <linux/threads.h>
 startup_32:
 
                                             /* 将pg0至0页间的 8kb做成两个内核使用的临时页表，映射0-8m物理地址，为开启页机制做准备*/
