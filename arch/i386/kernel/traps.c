@@ -1,8 +1,14 @@
-#include <linux/init.h>
-#include <asm-i386/segment.h>
-#include <linux/stddef.h>
-#include <asm-i386/hw-irq.h>
 #include <linux/sched.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
+#include <linux/errno.h>
+#include <linux/mm.h>
+#include <linux/init.h>
+#include <linux/spinlock.h>
+#include <linux/interrupt.h>
+#include <asm-i386/system.h>
+#include <asm-i386/io.h>
+#include <asm-i386/atomic.h>
 #include <asm-i386/desc.h>
 
 /* idt表，包含256个中断门描述符，在Linux2.4中，这里还指定了段名字，

@@ -1,8 +1,9 @@
-#include <linux/linkage.h>
 /* 这个头文件定义了va_list宏，来源于c语言，Linux2.4也是这么处理的
 printk.c包含了mm.h，其包含了schde.h，其包含了kernel.h，其包含了stdarg.h */
-#include <stdarg.h>
-#include <linux/kernel.h>
+
+#include <linux/mm.h>
+#include <linux/smp_lock.h>
+#include <linux/init.h>
 
 #define LOG_BUF_LEN (16384) /* 日志缓冲长度 */
 

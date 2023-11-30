@@ -3,10 +3,11 @@
  * 例如，针对不同硬件架构或特定的串行通信硬件，会有专门的代码文件实现其特定的配置和控制逻辑。
  */
 
-#include <asm-i386/io.h>
-#include <linux/serialP.h>
+#include <linux/types.h>
 #include <linux/serial.h>
+#include <linux/serialP.h>
 #include <linux/serial_reg.h>
+#include <asm-i386/io.h>
 
 /* 定义这个宏是为了可以随时方便修改到底是否内联 */
 #define _INLINE_ inline

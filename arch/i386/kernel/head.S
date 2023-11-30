@@ -2,7 +2,7 @@
 #include <linux/linkage.h>
 #include <asm-i386/segment.h>
 #include <asm-i386/page.h>					/* 引入__PAGE_OFFSET */
-#include <asm-i386/pagetable.h>				/* 引入BOOT_USER_PGD_PTRS 和 BOOT_KERNEL_PGD_PTRS */
+#include <asm-i386/pgtable.h>				/* 引入BOOT_USER_PGD_PTRS 和 BOOT_KERNEL_PGD_PTRS */
 #include <asm-i386/desc.h>
                                          	/* 符合Multiboot规范的 OS 映象需要这样一个 magic Multiboot 头, 
                                             只有用这个开头, grub才能引导内核映像

@@ -1,5 +1,5 @@
-#ifndef _ASM_I386_MMU_CONTEX_H
-#define _ASM_I386_MMU_CONTEX_H
+#ifndef _ASM_I386_MMU_CONTEXT_H
+#define _ASM_I386_MMU_CONTEXT_H
 
 /* 函数位于#ifdef CONFIG_SMP 下的 #else 下
 函数用于处理转换后备缓冲器（TLB）的懒惰更新。TLB 是 CPU 中用于加速虚拟地址到物理地址转换的缓存。

@@ -1,13 +1,7 @@
-#include <linux/mmzone.h>
-#include <linux/init.h>
-#include <linux/list.h>
 #include <linux/mm.h>
-#include <linux/bootmem.h>
-#include <linux/wait.h>
-#include <linux/spinlock.h>
 #include <linux/swapctl.h>
-#include <linux/string.h>
-#include <linux/stddef.h>
+#include <linux/interrupt.h>
+#include <linux/bootmem.h>
 
 /* 抽象每个内存节点的pg_data_t结构体形成的单链表 */
 pg_data_t *pgdat_list;

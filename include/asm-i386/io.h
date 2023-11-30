@@ -2,7 +2,7 @@
 #define _ASM_I386_IO_H
 /* 这个头文件中，我将所有的extern inline 替换成了static inline，原因见makefile文件的#-fgnu89-inline参数解释 */
 
-#include <asm-i386/page.h>
+
 
 /*
  * 用于将地址 x 转换为用于I/O操作的虚拟地址。

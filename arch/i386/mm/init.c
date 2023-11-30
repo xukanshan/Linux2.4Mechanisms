@@ -1,13 +1,18 @@
-#include <linux/init.h>
-#include <asm-i386/page.h>
-#include <linux/bootmem.h>
-#include <asm-i386/pagetable.h>
-#include <asm-i386/pagetable-2level.h>
-#include <asm-i386/fixmap.h>
-#include <linux/mmzone.h>
-#include <asm-i386/dma.h>
-#include <asm-i386/io.h>
+#include <linux/sched.h>
+#include <linux/kernel.h>
+#include <linux/errno.h>
+#include <linux/string.h>
+#include <linux/types.h>
 #include <linux/mm.h>
+#include <linux/smp.h>
+#include <linux/init.h>
+#include <linux/bootmem.h>
+#include <asm-i386/processor.h>
+#include <asm-i386/system.h>
+#include <asm-i386/pgtable.h>
+#include <asm-i386/dma.h>
+#include <asm-i386/fixmap.h>
+#include <asm-i386/e820.h>
 
 /* 初始化一段固定的虚拟地址范围的页表, 也就是只为这段虚拟地址分配了页表，但是没有映射到物理页。参数：
 开始和结束的虚拟地址（start 和 end），以及页全局目录（pgd）的基地址 */

@@ -1,8 +1,8 @@
 #include <stdarg.h>
-#include <linux/ctype.h>
-#include <linux/string.h>
-#include <asm-i386/div64.h>
 #include <linux/types.h>
+#include <linux/string.h>
+#include <linux/ctype.h>
+#include <asm-i386/div64.h>
 
 #define ZEROPAD 1  /* 用0填充 */
 #define SIGN 2     /* 决定是unsigned long 还是 signed long */

@@ -8,8 +8,10 @@
 /* 不让汇编识别以下 */
 #ifndef __ASSEMBLY__
 
-#include <asm-i386/page.h>
-#include <asm-i386/pagetable-2level.h>
+#include <asm-i386/processor.h>
+#include <asm-i386/fixmap.h>
+#include <linux/threads.h>
+#include <asm-i386/pgtable-2level.h>
 
 /* 定义在head.S中 */
 extern pgd_t swapper_pg_dir[1024];

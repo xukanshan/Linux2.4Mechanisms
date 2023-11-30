@@ -1,10 +1,19 @@
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
-#include <asm-i386/atomic.h>
-#include <linux/stddef.h>
-#include <asm-i386/processor.h>
+#include <linux/binfmts.h>
+#include <linux/personality.h>
+#include <linux/threads.h>
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <asm-i386/system.h>
+#include <asm-i386/page.h>
 #include <asm-i386/mmu.h>
+#include <linux/smp.h>
+#include <linux/fs.h>
+#include <asm-i386/processor.h>
+#include <linux/spinlock.h>
+#include <asm-i386/current.h>
 
 /* 定义了初始化时候使用的栈大小，共8K */
 #define INIT_TASK_SIZE 2048 * sizeof(long)

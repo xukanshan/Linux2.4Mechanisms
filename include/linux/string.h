@@ -1,7 +1,7 @@
 #ifndef _LINUX_STRING_H
 #define _LINUX_STRING_H
 
-#include <asm-i386/posix_types.h>
+
 
 /* 定义在lib/string.c中 */
 extern __kernel_size_t strnlen(const char *, __kernel_size_t);

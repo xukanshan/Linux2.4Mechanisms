@@ -10,8 +10,8 @@
 架构相关层 (Architecture-specific layer): 这些代码针对特定的硬件架构。例如，asm/types.h通常会根据具体的CPU架构提供类型定义。
 驱动和子系统层 (Driver and subsystem layer): 这些代码通常针对具体的设备或子系统，但仍然会尽可能地使用通用的接口和数据类型。 */
 
+#include <linux/posix_types.h>
 #include <asm-i386/types.h>
-#include <asm-i386/posix_types.h>
 
 /* size_t 是一种在 C 语言（以及C++）中广泛使用的数据类型，用于表示大小或计数。
 其最常见的用途是表示数组中元素的数量、字符串的长度，或者是内存块的大小。

@@ -1,8 +1,9 @@
 #ifndef _LINUX_MULTIBOOT_H
 #define _LINUX_MULTIBOOT_H
-#include <linux/types.h>
 /* 这个头文件是为了应对grub使用multiboot规范启动后的返回信息，grub启动后，会返回multiboot_t结构体地址（ebx寄存器中），
 并且我们会用到mmap_addr指向的mmap_entry_t数组，从中取得grub使用multiboot规范启动后的内存区域信息 */
+
+#include <linux/types.h>
 
 /* multiboot_t结构体定义，grub使用multiboot规范启动后会返回这样一个结构体，其地址在ebx中，结构体字段是否有意义取决于multiboot文件头中的flags设置，
 我们只需要用到mmap_length与mmap_addr这两个成员，其他不用关注 */
@@ -71,6 +72,5 @@ struct mmap_entry_t
     uint32_t length_high;
     uint32_t type;
 } __attribute__((packed));
-
 
 #endif /* _LINUX_MULTIBOOT_H */

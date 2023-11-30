@@ -1,9 +1,10 @@
-#ifndef _BOOTMEM_H
-#define _BOOTMEM_H
-#include <linux/init.h>
-#include <linux/cache.h>
-#include <asm-i386/page.h>
+#ifndef _LINUX_BOOTMEM_H
+#define _LUNUX_BOOTMEM_H
+
+#include <asm-i386/pgtable.h>
 #include <asm-i386/dma.h>
+#include <linux/cache.h>
+#include <linux/init.h>
 #include <linux/mmzone.h>
 
 extern void __init reserve_bootmem(unsigned long addr, unsigned long size);
@@ -53,4 +54,4 @@ pgdat 参数是对应的内存节点数据结构，而 x 是要分配的字节�
 0作为预期分配地址*/
 #define alloc_bootmem_low(x) __alloc_bootmem((x), SMP_CACHE_BYTES, 0)
 
-#endif /* _BOOTMEM_H */
+#endif /* _LINUX_BOOTMEM_H */

@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <linux/linkage.h>
+#include <linux/stddef.h>
 
 #define KERN_WARNING "<4>" /* 警告级别 */
 

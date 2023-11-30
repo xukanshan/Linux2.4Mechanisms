@@ -1,8 +1,11 @@
+#include <linux/sched.h>
+#include <linux/errno.h>
 #include <linux/ioport.h>
-#include <asm-i386/io.h>
+#include <linux/init.h>
+#include <linux/malloc.h>
 #include <linux/spinlock.h>
-#include <asm-i386/errno.h>
-#include <linux/stddef.h>
+#include <asm-i386/io.h>
+
 
 /* 资源被组织成一个树状结构，ioport_resource 和 iomem_resource 作为根资源，是这棵树的顶端。
 所有的设备驱动程序在使用这些资源前必须先向内核注册它们所需的资源，以确保资源不会被多个驱动程序重复使用。

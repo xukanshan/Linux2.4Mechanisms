@@ -1,8 +1,12 @@
 #ifndef _LINUX_WAIT_H
 #define _LINUX_WAIT_H
 
+#include <linux/kernel.h>
 #include <linux/list.h>
+#include <linux/stddef.h>
 #include <linux/spinlock.h>
+#include <asm-i386/page.h>
+#include <asm-i386/processor.h>
 
 /* 将等待队列里面的那把锁定义成了自旋锁，但是在 #if USE_RW_WAIT_QUEUE_SPINLOCK 情况下，
 是定义成了读写锁 rwlock_t。自旋锁即可满足复现主要机制，故采用 */

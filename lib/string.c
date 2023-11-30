@@ -1,4 +1,6 @@
 #include <linux/types.h>
+#include <linux/string.h>
+#include <linux/ctype.h>
 
 /* 用于计算字符串 s 的长度，但最多计算到 count 个字符。
 这个函数的名称由来可以从其功能理解：

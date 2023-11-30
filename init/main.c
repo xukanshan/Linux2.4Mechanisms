@@ -1,7 +1,12 @@
-#include <linux/linkage.h>
-#include <linux/smp_lock.h>
+#include <linux/proc_fs.h>
+#include <linux/string.h>
+#include <linux/ctype.h>
+#include <linux/ioport.h>
 #include <linux/init.h>
-#include <linux/sched.h>
+#include <linux/smp_lock.h>
+#include <linux/bootmem.h>
+#include <asm-i386/io.h>
+
 
 /* arch/i386/kernel/setup.c */
 extern void setup_arch(char **);

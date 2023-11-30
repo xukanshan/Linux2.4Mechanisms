@@ -1,4 +1,3 @@
-#include <linux/init.h>
 /* 这个文件所谓的 "引导内存分配器" (boot-time memory allocator)，
 它在系统启动阶段分配内存，这是在常规内存管理系统（比如页式内存管理）启动之前的一种简化方式。
 Linux内核启动时，需要一些临时的内存来设置各种数据结构，比如页表、内核的数据结构等。
@@ -8,14 +7,13 @@ Linux内核启动时，需要一些临时的内存来设置各种数据结构，
 bootmem.c 中的引导内存分配器就会被淘汰，系统转而使用更高级的内存管理机制。
 这种设计允许Linux内核在早期启动过程中高效地管理内存，同时为后续更复杂的内存管理奠定基础。 */
 
-#include <linux/mmzone.h>
+#include <linux/mm.h>
+#include <linux/swapctl.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
 #include <linux/bootmem.h>
-#include <asm-i386/page.h>
-#include <asm-i386/io.h>
-#include <linux/string.h>
-#include <asm-i386/bitops.h>
-#include <linux/string.h>
-#include <linux/stddef.h>
+#include <linux/mmzone.h>
+#include <asm-i386/dma.h>
 
 /* 初始化一个节点的引导内存管理器。它设置了一个位图来跟踪哪些页面是可用的，哪些是已经被占用的。参数：
 pg_data_t *pgdat: 指向一个包含节点（node）相关数据的结构，该结构抽象了一个内存节点

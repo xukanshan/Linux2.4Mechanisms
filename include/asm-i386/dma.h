@@ -9,6 +9,9 @@ DMA（Direct Memory Access）是一种让外部硬件（如磁盘控制器、网
 所以，当一个早期的设备需要进行DMA操作时，操作系统从这个DMA区域中分配内存。
 这确保了数据位于设备可以访问的物理地址范围内。 */
 
+#include <linux/spinlock.h> 
+#include <asm-i386/io.h>         
+
 /* 指定直接内存访问（DMA）能够访问的最大物理地址 */
 #define MAX_DMA_ADDRESS (PAGE_OFFSET + 0x1000000)
 

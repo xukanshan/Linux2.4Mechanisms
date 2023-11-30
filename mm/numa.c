@@ -1,5 +1,9 @@
+#include <linux/kernel.h>
+#include <linux/mm.h>
+#include <linux/init.h>
 #include <linux/bootmem.h>
 #include <linux/mmzone.h>
+#include <linux/spinlock.h>
 
 /* 文件主要涉及非一致性内存访问NUMA（Non-Uniform Memory Access）架构的内存管理。
 NUMA是一种多处理器计算机内存设计配置，用于处理多个处理器之间的内存访问不一致性问题。

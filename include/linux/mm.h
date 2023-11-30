@@ -1,10 +1,14 @@
 #ifndef _LINUX_MM_H
 #define _LINUX_MM_H
 
+#include <linux/sched.h>
+#include <linux/errno.h>
+#include <linux/string.h>
 #include <linux/list.h>
+#include <linux/mmzone.h>
+#include <asm-i386/page.h>
+#include <asm-i386/pgtable.h>
 #include <asm-i386/atomic.h>
-#include <asm-i386/bitops.h>
-#include <linux/wait.h>
 
 /* 该宏位于#ifdef CONFIG_HIGHMEM（定义为0x10） 的 #else 下，
 用于表示高端内存区域（HighMem）的分配请求对应的GPF掩码的位 */
@@ -18,7 +22,6 @@
 
 /* mm/page_alloc.c */
 extern void free_area_init(unsigned long *zones_size);
-
 
 /* 这个结构体是对一个物理内存页面的抽象 */
 typedef struct page
@@ -38,7 +41,7 @@ typedef struct page
     struct zone_struct *zone; /* 指向描述该页面所属内存区域的 zone_struct 结构的指针 */
 } mem_map_t;
 
-/* mm/mm.c */
+/* mm/memory.c */
 extern mem_map_t *mem_map;
 
 /* 用于设定一个page的引用计数 */

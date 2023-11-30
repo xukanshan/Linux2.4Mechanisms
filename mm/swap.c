@@ -1,4 +1,8 @@
+#include <linux/mm.h>
 #include <linux/swapctl.h>
+#include <linux/init.h>
+#include <asm-i386/dma.h>
+#include <asm-i386/pgtable.h>
 
 /* 创了一个freepages_t 实例 freepages，并全部初始化为0 */
 freepages_t freepages = {
