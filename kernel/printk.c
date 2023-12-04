@@ -24,17 +24,19 @@ static unsigned long log_start;    /* 记录日志缓冲区内信息的起始 */
 unsigned long log_size;            /* 日志缓冲区内现有信息的大小 */
 static unsigned long logged_chars; /* 记录日志缓冲区内已经写入的字符数目 */
 // struct console *console_drivers;   /* 指向当前的控制台，暂未实现 */
+spinlock_t console_lock = SPIN_LOCK_UNLOCKED;   /* 控制台锁，并初始化为解锁状态 */
+
 
 /* 这个函数的核心是将格式化的日志信息写入一个循环缓冲区，并且如果有控制台的话，就输出到控制台中。 */
 asmlinkage int printk(const char *fmt, ...)
 {
-    va_list args;                      /* 用于处理可变参数，va_list 由c语言提供的头文件stdarg.h定义，实际类型就是char* */
-    int i;                             /* 用于存储格式化字符串的长度 */
-    char *msg, *p, *buf_end;           /* 定义三个字符指针，用于操作和追踪字符串 */
-    int line_feed;                     /* 用于标记行结束 */
-    static signed char msg_level = -1; /* 用于存储日志等级 */
-    long flags;                        /* 用于存储旋转锁状态 */
-    // spin_lock_irqsave(&console_lock, flags); /*  获取旋转锁console_lock，并保存中断状态到flags，暂未实现 */
+    va_list args;                            /* 用于处理可变参数，va_list 由c语言提供的头文件stdarg.h定义，实际类型就是char* */
+    int i;                                   /* 用于存储格式化字符串的长度 */
+    char *msg, *p, *buf_end;                 /* 定义三个字符指针，用于操作和追踪字符串 */
+    int line_feed;                           /* 用于标记行结束 */
+    static signed char msg_level = -1;       /* 用于存储日志等级 */
+    long flags;                              /* 用于存储旋转锁状态 */
+    spin_lock_irqsave(&console_lock, flags); /*  获取旋转锁console_lock，并保存中断状态到flags */
 
     va_start(args, fmt);                /*  初始化args以指向fmt，其实现等同于 va_start(ap, v) ap = (va_list)&v */
     i = vsprintf(buf + 3, fmt, args);   /* 使用vsprintf将格式化的输出写入buf数组的第四个位置起的部分，前三个字符用于存储消息等级 */
@@ -90,7 +92,7 @@ asmlinkage int printk(const char *fmt, ...)
         if (line_feed) /* 如果处理了一整行（遇到了换行符），则重置日志等级，以便下一行可以重新解析等级 */
             msg_level = -1;
     }
-    // spin_unlock_irqrestore(&console_lock, flags);   /* 释放旋转锁，并恢复之前保存的中断状态。暂未实现 */
+    spin_unlock_irqrestore(&console_lock, flags); /* 释放旋转锁，并恢复之前保存的中断状态。 */
     // wake_up_interruptible(&log_wait); /* 唤醒等待日志消息的进程，暂未实现 */
     return i; /* 返回写入的字符数 */
 }

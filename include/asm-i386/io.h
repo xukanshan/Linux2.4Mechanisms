@@ -2,17 +2,13 @@
 #define _ASM_I386_IO_H
 /* 这个头文件中，我将所有的extern inline 替换成了static inline，原因见makefile文件的#-fgnu89-inline参数解释 */
 
-
-
-/*
- * 用于将地址 x 转换为用于I/O操作的虚拟地址。
- * 当我们进行I/O操作时，我们需要确保我们使用的是正确映射的虚拟地址，
- * 以便硬件能够在页机制下正确解析和定位到实际的物理位置。
- * 在某些体系结构或配置中，这可能涉及到复杂的地址转换过程。
- * 根据这条定义处于Linux 2.4 #if 1预处理器指令下猜测，
- * 我们预期传入的x已经是一个适当的虚拟地址。
- * 可能存在情况：在其他体系结构或配置中，如s390，__io_virt 可能涵盖更多的地址转换逻辑。
- */
+/* 用于将地址 x 转换为用于I/O操作的虚拟地址。
+当我们进行I/O操作时，我们需要确保我们使用的是正确映射的虚拟地址，
+以便硬件能够在页机制下正确解析和定位到实际的物理位置。
+在某些体系结构或配置中，这可能涉及到复杂的地址转换过程。
+根据这条定义处于Linux 2.4 #if 1预处理器指令下猜测，
+我们预期传入的x已经是一个适当的虚拟地址。
+可能存在情况：在其他体系结构或配置中，如s390，__io_virt 可能涵盖更多的地址转换逻辑。 */
 #define __io_virt(x) ((void *)(x))
 
 /* 用于向一个地址写入一字节数据 */
@@ -26,8 +22,15 @@
 端口 0x80 通常用于访问不在用的设备，因此它可以在不产生副作用的情况下用于延迟
 这个额外的延迟相对很小，它大约等同于一次端口输出操作的时间。
 在历史上，尤其是在较慢的计算机硬件上，像端口 0x80 这样的端口被用作延迟端口的原因是因为 I/O 操作通常比 CPU 指令要慢。
-所以，在进行 I/O 操作，尤其是向某些需要一定时间来响应的硬件端口写入时，这样的额外操作可以防止 CPU 过快地执行下一条指令。
-这里我不支持outb_p函数 */
+所以，在进行 I/O 操作，尤其是向某些需要一定时间来响应的硬件端口写入时，这样的额外操作可以防止 CPU 过快地执行下一条指令。 */
+
+/* 属于#ifdef SLOW_IO_BY_JUMPING 下的 #else，表示向端口推送数据之后的延时方式，
+另一种是"\njmp 1f\n1:\tjmp 1f\n1:" */
+#define __SLOW_DOWN_IO "\noutb %%al,$0x80"
+
+/* 属于#ifdef REALLY_SLOW_IO 下的 #else，表示向端口推送数据之后的延时长度，
+另一个是三个__SLOW_DOWN_IO */
+#define __FULL_SLOW_DOWN_IO __SLOW_DOWN_IO
 
 /* 这个宏就是为了处理outb与outb_p名字的差异 */
 #define __OUT1(s, x)                                                 \
@@ -39,11 +42,13 @@
 __asm__ __volatile__ ("out" #s " %" s1 "0,%" s2 "1"
 
 /* outb利用__OUT1与__OUT2再加上一点输出输入指定即可生成；outb_p则还需要插入一个向0x80输出字节的宏在__OUT2后面 */
-#define __OUT(s, s1, x)                                     \
-__OUT1(s,x) __OUT2(s,s1,"w") : : "a" (value), "Nd" (port)); \
+#define __OUT(s, s1, x)                                                             \
+__OUT1(s,x) __OUT2(s,s1,"w") : : "a" (value), "Nd" (port));                         \
+    }                                                                               \
+__OUT1(s##_p,x) __OUT2(s,s1,"w") __FULL_SLOW_DOWN_IO : : "a" (value), "Nd" (port)); \
     }
 
-/* 以下三个会被宏展开成outb, outw, outl函数 */
+/* 以下三个会被宏展开成outb, outw, outl，和各自带有_p的版本函数 */
 __OUT(b, "b", char)
 __OUT(w, "w", short)
 __OUT(l, , int)
@@ -59,12 +64,15 @@ __OUT(l, , int)
 __asm__ __volatile__ ("in" #s " %" s2 "1,%" s1 "0"
 
 /* inb利用__IN1与__IN2再加上一点输出输入指定即可生成；inb_p则还需要插入一个向0x80输出字节的宏在__IN2后面 */
-#define __IN(s, s1, i...)                                  \
-__IN1(s) __IN2(s,s1,"w") : "=a" (_v) : "Nd" (port) ,##i ); \
-    return _v;                                             \
+#define __IN(s, s1, i...)                                                          \
+__IN1(s) __IN2(s,s1,"w") : "=a" (_v) : "Nd" (port) ,##i );                         \
+    return _v;                                                                     \
+    }                                                                              \
+__IN1(s##_p) __IN2(s,s1,"w") __FULL_SLOW_DOWN_IO : "=a" (_v) : "Nd" (port) ,##i ); \
+    return _v;                                                                     \
     }
 
-/* 以下三个会被宏展开成inb, inw, inl函数，返回值的类型使用了RETURN_TYPE宏来进行规定 */
+/* 以下三个会被宏展开成inb, inw, inl和各自带有_p的版本函数，返回值的类型使用了RETURN_TYPE宏来进行规定 */
 #define RETURN_TYPE unsigned char
 __IN(b, "")
 #undef RETURN_TYPE

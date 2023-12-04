@@ -25,14 +25,41 @@ typedef struct
 #define RW_LOCK_UNLOCKED \
     (rwlock_t) {}
 
-/* 属于 #ifdef CONFIG_SMP 的 #else 下 #if，这个宏用于读写锁的写者上锁，但是实际是什么都没有做，
+/* 属于 #ifdef CONFIG_SMP 的 #else ，这个宏用于读写锁的写者上锁，但是实际是什么都没有做，
 lock 被转换为 void 类型。这实际上是一种通用的方法来显式地忽略一个变量或参数，避免编译器警告 unused variable */
 #define write_lock(lock) (void)(lock)
 
-/* 属于 #ifdef CONFIG_SMP 的 #else 下 #if，这个宏用于读写锁的写者解锁，但是实际是什么都没有做 */
+/* 属于 #ifdef CONFIG_SMP 的 #else ，这个宏用于读写锁的写者解锁，但是实际是什么都没有做 */
 #define write_unlock(lock) \
     do                     \
     {                      \
+    } while (0)
+
+/* 获取自旋锁的同时关闭本地中断 */
+#define spin_lock_irqsave(lock, flags) \
+    do                                 \
+    {                                  \
+        local_irq_save(flags);         \
+        spin_lock(lock);               \
+    } while (0)
+
+/* 释放自旋锁的同时恢复本地中断 */
+#define spin_unlock_irqrestore(lock, flags) \
+    do                                      \
+    {                                       \
+        spin_unlock(lock);                  \
+        local_irq_restore(flags);           \
+    } while (0)
+
+/* 属于 #ifdef CONFIG_SMP 的 #else 下的 #if (DEBUG_SPINLOCKS < 1) ，
+表示最低级调试级别下的自旋锁，由于是非SMP结构，自然什么都不做 */
+#define spin_lock(lock) (void)(lock)
+
+/* 属于 #ifdef CONFIG_SMP 的 #else 下的 #if (DEBUG_SPINLOCKS < 1) ，
+表示最低级调试级别下的自旋锁，由于是非SMP结构，自然什么都不做 */
+#define spin_unlock(lock) \
+    do                    \
+    {                     \
     } while (0)
 
 #endif /* _LINUX_SPINLOCK_H */

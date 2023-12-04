@@ -4,11 +4,18 @@
 /* X与:之间的注释符, 只是为了保证中间没有多余空格，可以去掉 */
 #define SYMBOL_NAME_LABEL(X) X /**/:
 
+/* 汇编代码中，标识一个符号 */
 #define SYMBOL_NAME(X) X
 
 /* 下一条执行四字节对齐, 中间填充0x90(nop指令，表示什么都不做) */
 #define __ALIGN .align 4, 0x90
 #define ALIGN __ALIGN
+
+/* 下一条指令四字节对齐，因为用在内联汇编中所以是字符串形式 */
+#define __ALIGN_STR ".align 4,0x90"
+
+/* 用于将一个符号字符串化，比如传入0，那么就会变成"0" */
+#define SYMBOL_NAME_STR(X) #X
 
 /* 这个宏用于定义一个标号，并且将其全局化，并且标号开始代码4字节对齐 */
 #define ENTRY(name)           \

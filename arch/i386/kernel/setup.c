@@ -14,6 +14,12 @@
 #include <asm-i386/dma.h>
 #include <asm-i386/mmu_context.h>
 
+/* 在系统启动时存储有关启动CPU的信息。
+初始化这个结构体的目的是为了在系统启动过程中提供一个默认的、已知状态的CPU信息集。
+这里只初始化了struct cpuinfo_x86前9个，后面会自动赋值为0。在arch/i386/lib/delay.c中的
+__const_udelay用到了current_cpu_data.loops_per_jiffy，经过排查，暂未发现这个值在trap_init之前被赋值 */
+struct cpuinfo_x86 boot_cpu_data = {0, 0, 0, 0, -1, 1, 0, 0, -1};
+
 /* 用于存储grub返回的multiboot_t结构体的地址，
 我懒得为这个变量单独写个c文件，就放在这里吧, 因为主要就是这个文件中的代码会用到
 在head.S中，我们已经从ebx中为这个变量放上了正确的地址 */

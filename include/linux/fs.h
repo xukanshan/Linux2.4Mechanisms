@@ -11,5 +11,7 @@
 #include <linux/string.h>
 #include <asm-i386/atomic.h>
 #include <asm-i386/bitops.h>
+#include <linux/affs_fs_i.h>
+
 
 #endif /* _LINUX_FS_H */

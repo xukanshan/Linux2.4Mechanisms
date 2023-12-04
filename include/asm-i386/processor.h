@@ -1,10 +1,10 @@
 #ifndef _ASM_I386_PROCESSOR_H
 #define _ASM_I386_PROCESSOR_H
 
-
 #include <asm-i386/segment.h>
 #include <asm-i386/page.h>
 #include <asm-i386/types.h>
+#include <asm-i386/cpufeature.h>
 #include <linux/threads.h>
 
 #define IO_BITMAP_SIZE 32
@@ -49,7 +49,6 @@ struct tss_struct
 当 bitmap 字段设置为 INVALID_IO_BITMAP_OFFSET(估计是超过了TSS对应的GDT描述符limit)时，
 表示 TSS 中没有有效的 I/O 位图 */
 #define INVALID_IO_BITMAP_OFFSET 0x8000
-
 
 /* 用于初始化一个 tss_struct 结构体的实例 */
 #define INIT_TSS                                                           \
@@ -115,5 +114,46 @@ struct thread_struct
             ~0,                                                    \
         } /* io permissions */                                     \
     }
+
+/*
+ *  CPU type and hardware bug flags. Kept separately for each CPU.
+ *  Members of this structure are referenced in head.S, so think twice
+ *  before touching them. [mj]
+ */
+
+/* 用于存储和管理特定CPU详细信息的数据结构 */
+struct cpuinfo_x86
+{
+    __u8 x86;        /* CPU家族。标识CPU家族的编号，比如Intel Pentium、AMD Athlon等 */
+    __u8 x86_vendor; /* CPU厂商。这个字段用于区分CPU的制造商，如Intel、AMD等 */
+    __u8 x86_model;  /* CPU型号。这是一个特定于厂商的CPU型号标识符 */
+    __u8 x86_mask;   /* CPU掩码或步进。这是CPU版本的一个细分，用于区分同一型号中的不同批次或修订版 */
+    /* 写保护是否正常。这个标志用于标识CPU的写保护功能是否正常。在一些早期的386处理器上可能不适用 */
+    char wp_works_ok;
+    /* HLT指令是否正常。这个标志用于指示CPU是否能正确处理HLT（停止指令），在某些486Dx4和旧386处理器上可能有问题 */
+    char hlt_works_ok;  
+    char hard_math; /*  硬件数学处理能力。这表明CPU是否有硬件浮点运算单元 */
+    char rfu;   /* 保留未使用 */
+    int cpuid_level; /* 支持的最高CPUID级别。如果CPU不支持CPUID指令，则为-1 */
+    __u32 x86_capability[NCAPINTS]; /* CPU能力。这是一个数组，包含了CPU支持的各种功能和指令集的标识符 */
+    char x86_vendor_id[16]; /*  CPU厂商ID。这是一个字符串，包含了CPU厂商的名称或标识 */
+    char x86_model_id[64];  /*  CPU型号ID。这是一个更详细的CPU型号和名称的字符串 */
+    int x86_cache_size; /* 缓存大小（以KB为单位）。这表明了CPU的缓存大小，只对支持此功能的CPU有效 */
+    int fdiv_bug;   /* FDIV错误。这个标志用于指示CPU是否受到著名的FDIV错误（浮点除法错误）的影响，主要在某些旧的Intel处理器中出现 */
+    int f00f_bug;   /* F00F错误。这是另一个历史上的CPU错误，影响了某些Intel处理器 */
+    int coma_bug;   /*  COMA错误。这是一个较少见的处理器错误，与CPU的特定行为有关 */
+    unsigned long loops_per_jiffy;  /* 每个jiffy的空循环数。这是衡量CPU速度的一个指标，用于调度和时间管理 */
+    unsigned long *pgd_quick;/* 指向快速页全局目录 */
+    unsigned long *pmd_quick;/* 指向页中间目录 */
+    unsigned long *pte_quick;/* 指向页表条目 */
+    unsigned long pgtable_cache_sz;/* 页表缓存大小。这个字段表示页表缓存的大小，用于内存管理优化 */
+};
+
+/* 位于#ifdef COMFIG_SMP 下的 #else，
+定义了当前cpu的一些信息 */
+#define current_cpu_data boot_cpu_data
+
+/* arch/i386/kernel/setup.c */
+extern struct cpuinfo_x86 boot_cpu_data;
 
 #endif /* _ASM_I386_PROCESSOR_H */

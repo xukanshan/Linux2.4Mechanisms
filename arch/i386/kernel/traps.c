@@ -129,7 +129,8 @@ void __init trap_init(void)
     set_trap_gate(17, NULL);  /* 原：&alignment_check)， 对齐检查异常的处理 */
     set_trap_gate(18, NULL);  /* 原：&machine_check，机器检查异常的处理 */
     set_trap_gate(19, NULL);  /* 原：&simd_coprocessor_error，SIMD 协处理器错误的处理 */
-    /* 原：&system_call，设置系统调用的处理。允许用户空间程序通过一个特定的中断来请求内核服务 */
+    /* 原：&system_call，设置系统调用的处理。允许用户空间程序通过一个特定的中断来请求内核服务,
+    这个要支持，暂未实现 */
     set_system_gate(SYSCALL_VECTOR, NULL);
 
     cpu_init(); /* 每个 CPU 设置必要的状态和环境 */

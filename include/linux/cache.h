@@ -14,4 +14,6 @@
     __attribute__((__aligned__(SMP_CACHE_BYTES), \
                    __section__(".data.cacheline_aligned")))
 
+#define ____cacheline_aligned __attribute__((__aligned__(SMP_CACHE_BYTES)))
+
 #endif /* _LINUX_CACHE_H */

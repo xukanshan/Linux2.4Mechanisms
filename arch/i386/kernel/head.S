@@ -40,8 +40,7 @@ _stext:  	                                /* 仿照Linux，用_stext与stext记�
 .long MBOOT_CHECKSUM                        /* 检测数值 */
                                  
 ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(链接脚本使用了这个符号来作为链接后的内核映像入口地址) */
-    ljmp $0x10, $0x101000                   /* 通过长跳转进入startup_32, rip的值确定是查看kernel.map中的.text的加载地址，实际是由我们的
-                                            kernel.ld决定的 */
+    jmp startup_32 - __PAGE_OFFSET          /* 跳转进入startup_32, 其编译地址在3G以上，所以要-3G */
                                             /* 这么做能既使用grub引导, 
                                             又能让linux2.4内核代码(从startup_32开始)编译地址在3G以上(因为Linux2.4源码就是这样做的), 
                                             还能在现在没有开启页机制的情况下进入startup_32
@@ -64,7 +63,7 @@ ENTRY(grub_head) 		                    /* 此处提供该声明给 ld 链接器(
 											*   7. 系统信息和启动信息块的线性地址保存在 EBX中（相当于一个指针）。
 											*/
                                             /* grub引导会设定临时使用的内核代码段(GDT偏移2)、数据段段描述符(GDT偏移3) */
-.section .text
+.section .text.startup						/* 这个段需要4K起始对齐，因为内部有临时使用的页表，它们依赖段内偏移来做到4K对齐 */
 startup_32:
 
                                             /* 将pg0至0页间的 8kb做成两个内核使用的临时页表，映射0-8m物理地址，为开启页机制做准备*/

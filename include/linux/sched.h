@@ -6,6 +6,7 @@
 #include <linux/threads.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/timex.h>
 #include <asm-i386/system.h>
 #include <asm-i386/page.h>
 #include <asm-i386/mmu.h>
