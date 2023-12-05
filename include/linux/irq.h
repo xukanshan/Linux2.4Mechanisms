@@ -11,6 +11,11 @@
 #define IRQ_INPROGRESS 1
 /* 中断请求禁用 */
 #define IRQ_DISABLED 2
+/* 中断请求（IRQ）正在被自动检测，统启动时或当添加新的硬件设备时，
+内核会尝试自动检测并配置相应的IRQ。在这个过程中，IRQ_AUTODETECT 标志被设置，表明该IRQ正处于自动检测状态 */
+#define IRQ_AUTODETECT 16 /* IRQ is being autodetected */
+/* 表示IRQ尚未被触发或观察到，常用于自动检测过程中 */
+#define IRQ_WAITING 32 /* IRQ not yet seen - for autodetection */
 
 /* 为不同类型的硬件中断提供了一个标准化的处理接口，允许内核以统一的方式管理和处理这些中断 */
 struct hw_interrupt_type

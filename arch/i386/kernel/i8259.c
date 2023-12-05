@@ -17,25 +17,25 @@
 /* 生成统一的中断处理函数 */
 BUILD_COMMON_IRQ()
 
-
 /* 接收两个参数 x 和 y，并通过预处理器的字符串连接操作（##）将它们合并，然后传递给 BUILD_IRQ 宏。
 例如，BI(0x0, 1) 会产生 BUILD_IRQ(0x01) */
-#define BI(x,y) \
-	BUILD_IRQ(x##y)
+#define BI(x, y) \
+    BUILD_IRQ(x##y)
 
 /* 用来生成16个连续的中断处理函数。它接收一个参数 x，然后为从 x0 到 xf 的每一个值调用 BI 宏。
 例如，BUILD_16_IRQS(0x0) 会批量生成 BUILD_IRQ(0x00) 到 BUILD_IRQ(0x0f) */
-#define BUILD_16_IRQS(x) \
-	BI(x,0) BI(x,1) BI(x,2) BI(x,3) \
-	BI(x,4) BI(x,5) BI(x,6) BI(x,7) \
-	BI(x,8) BI(x,9) BI(x,a) BI(x,b) \
-	BI(x,c) BI(x,d) BI(x,e) BI(x,f)
-
+#define BUILD_16_IRQS(x)                        \
+    BI(x, 0)                                    \
+    BI(x, 1)                                    \
+    BI(x, 2)                                    \
+    BI(x, 3)                                    \
+        BI(x, 4) BI(x, 5) BI(x, 6) BI(x, 7)     \
+            BI(x, 8) BI(x, 9) BI(x, a) BI(x, b) \
+                BI(x, c) BI(x, d) BI(x, e) BI(x, f)
 
 /* 展开为16个 BUILD_IRQ 调用，从 BUILD_IRQ(0x00) 到 BUILD_IRQ(0x0f)。
 每个 BUILD_IRQ 调用都会生成一个中断处理函数，这些函数被设计为处理特定的中断号 */
 BUILD_16_IRQS(0x0)
-
 
 /* 启动8259A 中断（指的是启用硬件），为的是符合struct hw_interrupt_type
 内的starup函数指针。但实际8259A不需要专门启用，所以直接调用的是enable_8259A_irq
@@ -93,7 +93,6 @@ static unsigned int cached_irq_mask = 0xffff;
 /* 函数声明，函数定义在本文件后面部分 */
 void mask_and_ack_8259A(unsigned int);
 
-
 /* 初始化主从8259A PIC，设置8295A的中断处理函数集合，并在初始化完成后恢复原来的中断屏蔽状态，参数：
 auto_eoi：用于控制8259A可编程中断控制器（PIC）的结束中断（End of Interrupt，EOI）模式，
 自动EOI模式（auto_eoi = 1）: 在这种模式下，8259A PIC在派发中断后会自动处理结束中断信号。
@@ -138,7 +137,7 @@ void __init init_8259A(int auto_eoi)
     spin_unlock_irqrestore(&i8259A_lock, flags); /* 释放自旋锁，并恢复之前保存的中断状态 */
 }
 
-/* 初始化主从8259A PIC，设置8295A的中断处理函数集合，设置和中断请求描述符表 */
+/* 初始化主从8259A PIC，设置8295A的中断处理函数集合，设置中断请求描述符表 */
 void __init init_ISA_irqs(void)
 {
     int i; /* 循环计数 */
@@ -168,7 +167,6 @@ void __init init_ISA_irqs(void)
     }
 }
 
-
 /* 用于生成中断处理函数的名称。它通过预处理器的字符串连接功能（##）来生成函数名。
 例如，如果你调用 IRQ(0, 0)，它会生成 IRQ00_interrupt */
 #define IRQ(x, y) IRQ##x##y##_interrupt
@@ -186,8 +184,15 @@ void (*interrupt[NR_IRQS])(void) = {
     IRQLIST_16(0x0),
 };
 
+/* 一个空的中断动作函数 */
+void no_action(int cpl, void *dev_id, struct pt_regs *regs) {}
+
+/* 中断引脚偏移2的引脚对应的中断动作 */
+static struct irqaction irq2 = {no_action, 0, 0, "cascade", NULL, NULL};
+
 /* 初始化主从8259A PIC，设置8295A的中断处理函数集合，设置和中断请求描述符表，
-设置中断门描述符对应的处理函数，设置时钟中断为100HZ */
+设置中断门描述符对应的处理函数，设置时钟中断为100HZ。
+设定IRQ2的中断动作为空动作，并打开中断引脚2（用于级联的） */
 void __init init_IRQ(void)
 {
     int i;           /* 用于循环计数 */
@@ -205,6 +210,9 @@ void __init init_IRQ(void)
     outb_p(0x34, 0x43);
     outb_p(LATCH & 0xff, 0x40); /* 先写入counter_value的低8位 */
     outb(LATCH >> 8, 0x40);     /* 再写入counter_value的高8位 */
+    /* 将中断动作irq2（什么都不做）添加到IRQ2的中断动作队列中，
+    因为这条引脚用于级联，所以对应的中断动作是什么都不做 */
+    setup_irq(2, &irq2);
 }
 
 /* 确认某个IRQ是否真正在被处理。原理：8259A 有两个主要的寄存器用于跟踪中断的状态：
