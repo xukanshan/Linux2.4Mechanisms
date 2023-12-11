@@ -25,4 +25,27 @@ struct irqaction
     struct irqaction *next;
 };
 
+/* kernel/softirq.c */
+extern void init_bh(int nr, void (*routine)(void));
+
+/* 定义了不同的中断下半部分处理函数指针在bh_base中的下标 */
+enum
+{
+    TIMER_BH = 0, /* 用于定时器相关的下半部处理 */
+    TQUEUE_BH,    /* 用于任务队列相关的下半部处理 */
+    DIGI_BH,      /* 用于特定硬件（如Digi板）的下半部处理 */
+    SERIAL_BH,    /* 用于串行端口相关的下半部处理 */
+    RISCOM8_BH,   /* 用于RISCOM8串行卡的下半部处理 */
+    SPECIALIX_BH, /* 用于Specialix硬件的下半部处理 */
+    AURORA_BH,    /* 是针对特定硬件（如Aurora）的下半部处理 */
+    ESP_BH,       /* 与某些类型的SCSI控制器相关的下半部处理 */
+    SCSI_BH,      /* 用于SCSI系统的下半部处理 */
+    IMMEDIATE_BH, /* 用于立即执行的下半部处理 */
+    CYCLADES_BH,  /* 用于Cyclades串行卡的下半部处理 */
+    CM206_BH,     /* 与CM206光盘驱动器相关的下半部处理 */
+    JS_BH,        /* 用于操纵杆（Joystick）设备的下半部处理 */
+    MACSERIAL_BH, /* 用于Macintosh串行端口的下半部处理 */
+    ISICOM_BH     /* 用于ISI串行卡的下半部处理 */
+};
+
 #endif /* _LINUX_INTERRUPT_H */

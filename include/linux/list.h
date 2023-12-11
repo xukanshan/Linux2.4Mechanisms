@@ -15,4 +15,12 @@ struct list_head
     struct list_head *next, *prev;
 };
 
+/* 初始化一个双链表节点，就是让prev和next均指向自己 */
+#define INIT_LIST_HEAD(ptr)  \
+    do                       \
+    {                        \
+        (ptr)->next = (ptr); \
+        (ptr)->prev = (ptr); \
+    } while (0)
+
 #endif /* _LINUX_LIST_H */

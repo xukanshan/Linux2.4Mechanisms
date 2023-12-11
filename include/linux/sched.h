@@ -48,7 +48,7 @@ struct task_struct
     /* 指向描述进程的虚拟内存空间的 mm_struct 结构体, 内核线程的情况下，
     这个字段通常是 NULL，因为内核线程不拥有独立的地址空间，它们直接在内核空间运行 */
     struct mm_struct *mm;
-    // int has_cpu, processor;     /* 分别标记进程是否在运行和运行的处理器编号 */
+    int has_cpu, processor; /* 分别标记进程是否在运行和运行的处理器编号 */
     // unsigned long cpus_allowed; /* 允许进程运行的 CPU 集合 */
     // struct list_head run_list;  /* 运行队列链表 */
     // unsigned long sleep_time;   /* 进程睡眠时间 */
@@ -108,7 +108,7 @@ struct task_struct
 
     /* 资源限制和其他信息 */
     // struct rlimit rlim[RLIM_NLIMITS]; /* 资源限制数组 */
-    unsigned short used_math;         /* 是否使用了数学协处理器 */
+    unsigned short used_math; /* 是否使用了数学协处理器 */
     // char comm[16];                    /* 进程名称 */
 
     /* 文件系统和信号处理 */
@@ -141,9 +141,9 @@ struct task_struct
     {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
         /* .state = 0, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
         .flags = 0, /* .sigpending = 0, */ /* .addr_limit = KERNEL_DS, */ /* .exec_domain = &default_exec_domain, */ /* .lock_depth = -1, */ /* .counter = DEF_COUNTER, */ /* .nice = DEF_NICE, */ /* .policy = SCHED_OTHER, */                                                                                                                                                                                                                                                                                                                                                                                             \
-            .mm = NULL,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
+                    .mm = NULL,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
         .active_mm = &init_mm, /* .cpus_allowed = -1, */ /* .run_list = LIST_HEAD_INIT(tsk.run_list), */ /* .next_task = &tsk, */ /* .prev_task = &tsk, */ /* .p_opptr = &tsk, */ /* .p_pptr = &tsk, */ /* .thread_group = LIST_HEAD_INIT(tsk.thread_group), */ /* .wait_chldexit = __WAIT_QUEUE_HEAD_INITIALIZER(tsk.wait_chldexit), */ /* .real_timer = {.function = it_real_fn}, */ /* .cap_effective = CAP_INIT_EFF_SET, */ /* .cap_inheritable = CAP_INIT_INH_SET, */ /* .cap_permitted = CAP_FULL_SET, */ /* .keep_capabilities = 0, */ /* .rlim = INIT_RLIMITS, */ /* .user = INIT_USER, */ /* .comm = "swapper", */ \
-            .thread = INIT_THREAD,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
+                               .thread = INIT_THREAD,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
         /* .fs = &init_fs, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
         /* .files = &init_files, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
         /* .sigmask_lock = SPIN_LOCK_UNLOCKED, */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
@@ -218,5 +218,23 @@ extern union task_union init_task_union;
 
 /* arch/i386/kernel/init_task.c */
 extern struct mm_struct init_mm;
+
+/* kernel/sched.c */
+extern void sched_init(void);
+
+/* 设置 PID哈希表的大小，哈希表用于快速查找进程控制块 */
+#define PIDHASH_SZ (4096 >> 2)
+
+/* kernel/fork.c */
+extern struct task_struct *pidhash[PIDHASH_SZ];
+
+/* kernel/timer.c */
+extern void timer_bh(void);
+
+/* kernel/timer.c */
+extern void tqueue_bh(void);
+
+/* kernel/timer.c */
+extern void immediate_bh(void);
 
 #endif /* _LINUX_SCHED_H */

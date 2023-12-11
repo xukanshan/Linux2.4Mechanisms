@@ -156,4 +156,7 @@ struct cpuinfo_x86
 /* arch/i386/kernel/setup.c */
 extern struct cpuinfo_x86 boot_cpu_data;
 
+/* 定义了初始化时系统用的task_struct */
+#define init_task	(init_task_union.task)
+
 #endif /* _ASM_I386_PROCESSOR_H */
