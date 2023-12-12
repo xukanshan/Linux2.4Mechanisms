@@ -5,4 +5,7 @@ POSIX 是一套旨在提高不同操作系统间兼容性的标准，被广泛�
 
 typedef unsigned int __kernel_size_t;
 
+typedef long __kernel_time_t;
+typedef long __kernel_suseconds_t;
+
 #endif /* _ASM_I386_POSIX_TYPES_H */

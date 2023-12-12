@@ -13,6 +13,9 @@ extern void setup_arch(char **);
 /* arch/i386/kernel/i8259.c */
 extern void init_IRQ(void);
 
+/* arch/i386/kernel/time.c */
+extern void time_init(void);
+
 asmlinkage void __init start_kernel(void)
 {
     char *command_line;
@@ -25,6 +28,7 @@ asmlinkage void __init start_kernel(void)
     /* 初始化pcb哈希表，初始化五层时间轮，注册几个下半部分处理函数，
     将当前任务的TLB设置为懒惰模式 */
     sched_init();
+    time_init();
     while (1)
         ;
 }

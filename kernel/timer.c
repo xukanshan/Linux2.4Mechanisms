@@ -82,3 +82,6 @@ void immediate_bh(void)
 {
     // run_task_queue(&tq_immediate);
 }
+
+/* 用于记录自Unix纪元（1970年1月1日）以来的秒数和微秒数部分 */
+volatile struct timeval xtime __attribute__((aligned(16)));

@@ -20,6 +20,9 @@ typedef struct
         (i)            \
     }
 
+/* 原子的将一个数加1，不简单的使用counter++这种形式，是因为这条代码可能会被翻译成
+mov 值到eax寄存器，然后 + 1，然后mov 回内存。虽然与inc 指令消耗时间几乎相同，但是后者更有
+原子性。详见《情景分析》p245 */
 static __inline__ void atomic_inc(atomic_t *v)
 {
     __asm__ __volatile__(

@@ -22,4 +22,7 @@ typedef __u8 uint8_t;
 typedef __u16 uint16_t;
 typedef __u32 uint32_t;
 
+typedef __kernel_time_t time_t;
+typedef __kernel_suseconds_t suseconds_t;
+
 #endif /* _LINUX_TYPES_H */

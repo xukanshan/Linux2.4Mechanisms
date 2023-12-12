@@ -1,7 +1,7 @@
 #ifndef _ASM_I386_PTRACE_H
 #define _ASM_I386_PTRACE_H
 
-/* 描绘了系统调用发生时压入内核栈的数据 */
+/* 描绘了中断发生时压入内核栈的数据 */
 struct pt_regs
 {
     long ebx;

@@ -11,6 +11,7 @@
 #include <asm-i386/page.h>
 #include <asm-i386/mmu.h>
 #include <linux/smp.h>
+#include <linux/signal.h>
 #include <linux/fs.h>
 #include <asm-i386/processor.h>
 #include <linux/spinlock.h>
@@ -236,5 +237,9 @@ extern void tqueue_bh(void);
 
 /* kernel/timer.c */
 extern void immediate_bh(void);
+
+/* kernel/timer.c，Linux2.4中这的extern没有volatile，但是高版本gcc编译会报错误，
+因为与timer.c中定义不同 */
+extern volatile struct timeval xtime;
 
 #endif /* _LINUX_SCHED_H */
