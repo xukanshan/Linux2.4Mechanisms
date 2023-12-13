@@ -48,4 +48,42 @@ enum
     ISICOM_BH     /* 用于ISI串行卡的下半部处理 */
 };
 
+/* kernel/softirq.c */
+extern void softirq_init(void);
+
+/* 对一个小任务的抽象 */
+struct tasklet_struct
+{
+    struct tasklet_struct *next; /* 将多个小任务链接在一起，形成一个任务队列 */
+    unsigned long state;         /* 一个位字段，不同的位表示不同的状态（如是否已调度执行、是否正在执行等） */
+    atomic_t count;              /* 引用计数器 */
+    void (*func)(unsigned long); /* 指向小任务被激活时要执行的函数 */
+    unsigned long data;          /* 存储传递给小任务函数的数据 */
+};
+
+/* 软中断动作 */
+struct softirq_action
+{
+    void (*action)(struct softirq_action *); /* 指向一个具体的软中断处理函数 */
+    void *data;                              /* 用于向软中断处理函数传递额外的数据或状态信息 */
+};
+
+/* kernel/softirq.c, 这个声明中有函数指针，函数传入参数是struct softirq_action
+指针类型，所以这个声明要放在struct softirq_action之后，否则报错，我不理解 */
+extern void open_softirq(int nr, void (*action)(struct softirq_action *), void *data);
+
+/* 标识不同软中断 */
+enum
+{
+    HI_SOFTIRQ = 0, /* 高优先级的小任务处理的软中断 */
+    /* 网络传输（Network Transmit）软中断。这个软中断用于处理网络包的发送。
+    当网络子系统有数据包需要发送时，它会触发这个软中断来处理发送操作 */
+    NET_TX_SOFTIRQ,
+    /* 网络接收（Network Receive）软中断。这个软中断用于处理网络包的接收。
+    当网络接口接收到数据包时，这个软中断被触发，以便在下半部处理这些包 */
+    NET_RX_SOFTIRQ,
+    /* 通用小任务（tasklets）处理的软中断。用于执行普通优先级的小任务的软中断 */
+    TASKLET_SOFTIRQ
+};
+
 #endif /* _LINUX_INTERRUPT_H */

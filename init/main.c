@@ -16,6 +16,9 @@ extern void init_IRQ(void);
 /* arch/i386/kernel/time.c */
 extern void time_init(void);
 
+/* kernel/softirq.c */
+extern void softirq_init(void);
+
 asmlinkage void __init start_kernel(void)
 {
     char *command_line;
@@ -28,7 +31,10 @@ asmlinkage void __init start_kernel(void)
     /* 初始化pcb哈希表，初始化五层时间轮，注册几个下半部分处理函数，
     将当前任务的TLB设置为懒惰模式 */
     sched_init();
-    time_init();
+    time_init(); /* 注册时钟中断的中断动作 */
+    /* 初始化了软中断机制（中断下半部分处理）：让32个底半部执行函数都指向统一的底半部处理函数bh_action，
+    在软中断中注册了统一的普通优先级、高优先级小任务处理函数 */
+    softirq_init();
     while (1)
         ;
 }
