@@ -5,6 +5,9 @@
 #include <linux/interrupt.h>
 #include <linux/kernel_stat.h>
 
+/* 记录自系统启动以来的时钟滴答数 */
+unsigned long volatile jiffies;
+
 /* 时间轮中第二层到第五层每层vec的数量位数（用1左移表示） */
 #define TVN_BITS 6
 

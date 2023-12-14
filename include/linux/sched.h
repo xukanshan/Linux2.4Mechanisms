@@ -242,4 +242,7 @@ extern void immediate_bh(void);
 因为与timer.c中定义不同 */
 extern volatile struct timeval xtime;
 
+/* kernel/timer.c */
+extern unsigned long volatile jiffies;
+
 #endif /* _LINUX_SCHED_H */

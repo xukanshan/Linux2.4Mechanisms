@@ -45,4 +45,7 @@ addl $0,0(%%esp) 实际上是一个假操作（加0），不改变任何寄存�
 这样，即使 addl 操作本身不修改任何数据，lock 前缀仍然会导致处理器在执行这条指令时完成所有挂起的内存操作*/
 #define mb() __asm__ __volatile__("lock; addl $0,0(%%esp)" : : : "memory")
 
+/* 位于#ifdef CONFIG_SMP 的 #else下，来打开中断*/
+#define sti() __sti()
+
 #endif /* _ASM_I386_SYSTEM_H */
