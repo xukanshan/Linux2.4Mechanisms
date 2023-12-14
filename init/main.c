@@ -35,6 +35,9 @@ asmlinkage void __init start_kernel(void)
     /* 初始化了软中断机制（中断下半部分处理）：让32个底半部执行函数都指向统一的底半部处理函数bh_action，
     在软中断中注册了统一的普通优先级、高优先级小任务处理函数 */
     softirq_init();
+    /* 初始化 slab 分配器: 核心就是初始化了cache_cache（总slab缓存池，
+    管理所有的slab缓存池，也就是kmem_cache_t结构体的分配） */
+    kmem_cache_init();
     while (1)
         ;
 }

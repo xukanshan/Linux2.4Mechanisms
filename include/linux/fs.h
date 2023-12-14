@@ -11,6 +11,7 @@
 #include <linux/string.h>
 #include <asm-i386/atomic.h>
 #include <asm-i386/bitops.h>
+#include <asm-i386/semaphore.h>
 #include <linux/affs_fs_i.h>
 
 

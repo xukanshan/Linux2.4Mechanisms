@@ -23,4 +23,10 @@ struct list_head
         (ptr)->prev = (ptr); \
     } while (0)
 
+/* 初始化链表，让两个节点都指向自己 */
+#define LIST_HEAD_INIT(name) \
+    {                        \
+        &(name), &(name)     \
+    }
+
 #endif /* _LINUX_LIST_H */

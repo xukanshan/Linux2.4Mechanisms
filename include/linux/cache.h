@@ -16,4 +16,7 @@
 
 #define ____cacheline_aligned __attribute__((__aligned__(SMP_CACHE_BYTES)))
 
+/* 让数据根据cpu L1缓存大小对齐，就是向上对齐到最近的L1大小的倍数 */
+#define L1_CACHE_ALIGN(x) (((x) + (L1_CACHE_BYTES - 1)) & ~(L1_CACHE_BYTES - 1))
+
 #endif /* _LINUX_CACHE_H */
