@@ -10,6 +10,7 @@
 #include <asm-i386/processor.h>
 #include <asm-i386/system.h>
 #include <asm-i386/pgtable.h>
+#include <asm-i386/pgalloc.h>
 #include <asm-i386/dma.h>
 #include <asm-i386/fixmap.h>
 #include <asm-i386/e820.h>
@@ -184,6 +185,18 @@ static inline int page_is_ram(unsigned long pagenr)
     return 0;
 }
 
+/* 通过遍历用户空间的页目录表项，来清除低地址映射 */
+void __init zap_low_mappings(void)
+{
+    int i; /* 用于后面的循环计数 */
+    /* 循环遍历每个 PGD（页全局目录）项 */
+    for (i = 0; i < USER_PTRS_PER_PGD; i++)
+        /* 将 PGD 项设置为0来清除它 */
+        set_pgd(swapper_pg_dir + i, __pgd(0));
+    /* 刷新全部的 TLB，确保所有的 CPU 都不会使用旧的内存映射 */
+    flush_tlb_all();
+}
+
 /* 清空0页，释放引导期间分配的内存，以及释放用于引导内存分配的位图本身，
 计算被保留的页面数，计算内核代码段，数据段，初始化段大小 */
 void __init mem_init(void)
@@ -226,4 +239,6 @@ void __init mem_init(void)
            datasize >> 10,
            initsize >> 10,
            (unsigned long)(totalhigh_pages << (PAGE_SHIFT - 10)));
+    /* 通过遍历用户空间的页目录表项，来清除低地址映射 */
+    zap_low_mappings();
 }

@@ -127,5 +127,8 @@ PGE没有被设置时，即使是标记为全局的页表项也会在 TLB 刷新
         __flush_tlb();    \
     } while (0)
 
+/* 定义了用户空间的pgd数量 */
+#define USER_PTRS_PER_PGD (TASK_SIZE / PGDIR_SIZE)
+
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_I386_PAGETABLE_H */

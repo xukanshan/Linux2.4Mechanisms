@@ -131,22 +131,22 @@ struct cpuinfo_x86
     /* 写保护是否正常。这个标志用于标识CPU的写保护功能是否正常。在一些早期的386处理器上可能不适用 */
     char wp_works_ok;
     /* HLT指令是否正常。这个标志用于指示CPU是否能正确处理HLT（停止指令），在某些486Dx4和旧386处理器上可能有问题 */
-    char hlt_works_ok;  
-    char hard_math; /*  硬件数学处理能力。这表明CPU是否有硬件浮点运算单元 */
-    char rfu;   /* 保留未使用 */
-    int cpuid_level; /* 支持的最高CPUID级别。如果CPU不支持CPUID指令，则为-1 */
+    char hlt_works_ok;
+    char hard_math;                 /*  硬件数学处理能力。这表明CPU是否有硬件浮点运算单元 */
+    char rfu;                       /* 保留未使用 */
+    int cpuid_level;                /* 支持的最高CPUID级别。如果CPU不支持CPUID指令，则为-1 */
     __u32 x86_capability[NCAPINTS]; /* CPU能力。这是一个数组，包含了CPU支持的各种功能和指令集的标识符 */
-    char x86_vendor_id[16]; /*  CPU厂商ID。这是一个字符串，包含了CPU厂商的名称或标识 */
-    char x86_model_id[64];  /*  CPU型号ID。这是一个更详细的CPU型号和名称的字符串 */
-    int x86_cache_size; /* 缓存大小（以KB为单位）。这表明了CPU的缓存大小，只对支持此功能的CPU有效 */
-    int fdiv_bug;   /* FDIV错误。这个标志用于指示CPU是否受到著名的FDIV错误（浮点除法错误）的影响，主要在某些旧的Intel处理器中出现 */
-    int f00f_bug;   /* F00F错误。这是另一个历史上的CPU错误，影响了某些Intel处理器 */
-    int coma_bug;   /*  COMA错误。这是一个较少见的处理器错误，与CPU的特定行为有关 */
+    char x86_vendor_id[16];         /*  CPU厂商ID。这是一个字符串，包含了CPU厂商的名称或标识 */
+    char x86_model_id[64];          /*  CPU型号ID。这是一个更详细的CPU型号和名称的字符串 */
+    int x86_cache_size;             /* 缓存大小（以KB为单位）。这表明了CPU的缓存大小，只对支持此功能的CPU有效 */
+    int fdiv_bug;                   /* FDIV错误。这个标志用于指示CPU是否受到著名的FDIV错误（浮点除法错误）的影响，主要在某些旧的Intel处理器中出现 */
+    int f00f_bug;                   /* F00F错误。这是另一个历史上的CPU错误，影响了某些Intel处理器 */
+    int coma_bug;                   /*  COMA错误。这是一个较少见的处理器错误，与CPU的特定行为有关 */
     unsigned long loops_per_jiffy;  /* 每个jiffy的空循环数。这是衡量CPU速度的一个指标，用于调度和时间管理 */
-    unsigned long *pgd_quick;/* 指向快速页全局目录 */
-    unsigned long *pmd_quick;/* 指向页中间目录 */
-    unsigned long *pte_quick;/* 指向页表条目 */
-    unsigned long pgtable_cache_sz;/* 页表缓存大小。这个字段表示页表缓存的大小，用于内存管理优化 */
+    unsigned long *pgd_quick;       /* 指向快速页全局目录 */
+    unsigned long *pmd_quick;       /* 指向页中间目录 */
+    unsigned long *pte_quick;       /* 指向页表条目 */
+    unsigned long pgtable_cache_sz; /* 页表缓存大小。这个字段表示页表缓存的大小，用于内存管理优化 */
 };
 
 /* 位于#ifdef COMFIG_SMP 下的 #else，
@@ -157,6 +157,9 @@ struct cpuinfo_x86
 extern struct cpuinfo_x86 boot_cpu_data;
 
 /* 定义了初始化时系统用的task_struct */
-#define init_task	(init_task_union.task)
+#define init_task (init_task_union.task)
+
+/* 定义了用户空间大小，就是3G */
+#define TASK_SIZE (PAGE_OFFSET)
 
 #endif /* _ASM_I386_PROCESSOR_H */
