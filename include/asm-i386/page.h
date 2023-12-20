@@ -108,5 +108,14 @@ Point p = (Point) { .x = 10, .y = 20 };
 /* 任何数字，只要去与这个，就会低12位就会变成0，即向下取整4KB的整数倍 */
 #define PAGE_MASK (~(PAGE_SIZE - 1))
 
+/* 判断一个页面是否非法，就是判断页面是不是落在了mem_map数组范围内 */
+#define VALID_PAGE(page) ((page - mem_map) < max_mapnr)
+
+/* 将内核虚拟地址转换成对应的page地址 */
+#define virt_to_page(kaddr) (mem_map + (__pa(kaddr) >> PAGE_SHIFT))
+
+/* arch/i386/kernel/head.S */
+extern unsigned long empty_zero_page[1024];
+
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_I386_PAGE_H */

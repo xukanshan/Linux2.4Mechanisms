@@ -33,7 +33,9 @@ struct e820map
         unsigned long type;      /* 记录内存区域的类型 */
     } map[E820MAX];
 };
-extern struct e820map e820;
-#endif /*!__ASSEMBLY__*/
 
+/* arch/i386/kernel/setup.c */
+extern struct e820map e820;
+
+#endif /*!__ASSEMBLY__*/
 #endif /* _ASM_I386_E820_H */

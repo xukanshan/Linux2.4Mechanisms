@@ -97,6 +97,9 @@ asmlinkage void __init start_kernel(void)
     /* 确定系统中每个 jiffy 内 CPU 可以执行多少个空循环，即 loops_per_jiffy 的值，
     由于其依赖现在并不不完善时钟中断，暂不执行 */
     // calibrate_delay();
+    /* 清空0页，释放引导期间分配的内存，以及释放用于引导内存分配的位图本身，
+    计算被保留的页面数，计算内核代码段，数据段，初始化段大小 */
+    mem_init();
     while (1)
         ;
 }

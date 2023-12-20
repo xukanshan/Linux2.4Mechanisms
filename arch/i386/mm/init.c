@@ -14,6 +14,22 @@
 #include <asm-i386/fixmap.h>
 #include <asm-i386/e820.h>
 
+/* 记录ram的总物理页面数 */
+static unsigned long totalram_pages;
+
+/* 记录总的高端内存页面数 */
+static unsigned long totalhigh_pages;
+
+/* arch/i386/kernel/head.S */
+extern char _text, _etext, _edata, __bss_start, _end;
+
+/* arch/i386/kernel/head.S */
+extern char __init_begin, __init_end;
+
+/* Linux2.4对于nr_free_pages没有头文件声明，我自己加的
+mm/page_alloc.c */
+extern unsigned int nr_free_pages(void);
+
 /* 初始化一段固定的虚拟地址范围的页表, 也就是只为这段虚拟地址分配了页表，但是没有映射到物理页。参数：
 开始和结束的虚拟地址（start 和 end），以及页全局目录（pgd）的基地址 */
 static void __init fixrange_init(unsigned long start, unsigned long end, pgd_t *pgd_base)
@@ -141,4 +157,73 @@ void __init paging_init(void)
         free_area_init(zones_size); /* 完成管理内存节点的pglist结构体的初始化 */
     }
     return;
+}
+
+/* 通过检查 BIOS 提供的 e820 内存映射表，确定给定的页面号是否属于系统的可用RAM区域。参数：
+pagenr：页面号码 */
+static inline int page_is_ram(unsigned long pagenr)
+{
+    int i; /* 用于循环迭代 */
+    /* 遍历e820结构体 */
+    for (i = 0; i < e820.nr_map; i++)
+    {
+        unsigned long addr, end; /* 存储内存区域的起始和结束地址 */
+        /* 检查当前e820条目的内存类型是不是 E820_RAM */
+        if (e820.map[i].type != E820_RAM)
+            /* 进入if，说明不是 */
+            continue;
+        /* 计算e820 ram区域的起始页面帧号 */
+        addr = (e820.map[i].addr + PAGE_SIZE - 1) >> PAGE_SHIFT;
+        /* 计算e820 ram区域的结束页面帧号 */
+        end = (e820.map[i].addr + e820.map[i].size) >> PAGE_SHIFT;
+        /* 判断页面号是否在ram区域内 */
+        if ((pagenr >= addr) && (pagenr < end))
+            /* 进入if，说明是 */
+            return 1;
+    }
+    return 0;
+}
+
+/* 清空0页，释放引导期间分配的内存，以及释放用于引导内存分配的位图本身，
+计算被保留的页面数，计算内核代码段，数据段，初始化段大小 */
+void __init mem_init(void)
+{
+    int codesize, reservedpages, datasize, initsize;
+    int tmp;
+
+    if (!mem_map)
+        BUG(); /* 如果管理整个系统的物理内存页数组不存在，就报错 */
+    /* 此句位于#ifdef CONFIG_HIGHMEM 的 #else下，
+    最大可映射页面数自然 = 物理页面数 = 最大低端内存（可以直接线性映射）页面数 */
+    max_mapnr = num_physpages = max_low_pfn;
+    /* 系统可直接寻址的边界自然是最大低端内存边界页转换过来的虚拟地址 */
+    high_memory = (void *)__va(max_low_pfn * PAGE_SIZE);
+    /* 清空0页，因为之前用来传递bios信息与命令行，其定义在head.S中 */
+    memset(empty_zero_page, 0, PAGE_SIZE);
+    /* 释放引导期间分配的内存，以及释放用于引导内存分配的位图本身，
+    并将返回的页面数加到 totalram_pages */
+    totalram_pages += free_all_bootmem();
+
+    reservedpages = 0; /* 初始化被保留的页面计数 */
+    /* 遍历从0到max_low_pfn（低端内存的最大页面帧号）的所有页面 */
+    for (tmp = 0; tmp < max_low_pfn; tmp++)
+        /* 判断页面是不是属于ram，并且是保留 */
+        if (page_is_ram(tmp) && PageReserved(mem_map + tmp))
+            /* 进入if，说明是属于ram，并且是被保留的 */
+            reservedpages++; /* 计数器+1 */
+    /* 计算内核代码段大小，_etext与_text由链接脚本提供 */
+    codesize = (unsigned long)&_etext - (unsigned long)&_text;
+    /* 计算内核数据段大小，_edata与_etext由链接脚本提供 */
+    datasize = (unsigned long)&_edata - (unsigned long)&_etext;
+    /* 计算内核初始化段大小，__init_end与__init_begin由链接脚本提供 */
+    initsize = (unsigned long)&__init_end - (unsigned long)&__init_begin;
+    /* 打印的信息包括可用内存、内核代码/数据/初始化段的大小和高端内存大小 */
+    printk("Memory: %luk/%luk available (%dk kernel code, %dk reserved, %dk data, %dk init, %ldk highmem)\n",
+           (unsigned long)nr_free_pages() << (PAGE_SHIFT - 10),
+           max_mapnr << (PAGE_SHIFT - 10),
+           codesize >> 10,
+           reservedpages << (PAGE_SHIFT - 10),
+           datasize >> 10,
+           initsize >> 10,
+           (unsigned long)(totalhigh_pages << (PAGE_SHIFT - 10)));
 }

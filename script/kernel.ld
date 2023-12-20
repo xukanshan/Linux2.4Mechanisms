@@ -13,7 +13,6 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 {	
     . = 0x100000;                               /* 设置当前位置为0x100000。在链接脚本中.表示当前位置，它决定了下一个段在输出文件中的位置。*/
     PROVIDE( _start = . );                      /* 提供一个全局符号_start(如果该符号没有定义)，其值为当前位置计数器的值 */
-    _text = .;                                  /* 将当前位置赋值给 _text（无论有没有被定义） 标签，表示代码段起始 */ 
     .text.grub_head :                           /* 定义一个输出文件中的代码段.grub_head段，这个段将会从1MB开始 */
     {             
 		*(.grub_head)                           /* 将输入文件中的所有名字有.grub_head的段的内容合并到输出文件中的一个.grub_head段中。*/
@@ -21,6 +20,7 @@ SECTIONS                                        /* SECTIONS块定义了输出文
 	}
     . = ALIGN(4096);                            /* 当前位置向前增长到4096的倍数，所以下一个段就是4KB对齐了，相当于我们预留了4KB空间给grub引导头*/
     . += 0xC0000000;                            /* 当前位置计数器增加0xC0000000, 仿照linux2.4, 内核编译地址在3G以上 */
+    _text = .;                                  /* 将当前位置赋值给 _text（无论有没有被定义） 标签，表示代码段起始 */ 
     .text.startup : AT(ADDR(.text.startup) - 0xC0000000)    /* 指定加载地址为链接地址 - 3G, 否则加载地址就是链接地址 */
 	{                                           /* 这个段需要4K起始对齐，因为启动阶段临时页表在段内，它们依靠段内4K偏移来做到4K起始对齐 */
 		*(.startup)                       
@@ -41,7 +41,34 @@ SECTIONS                                        /* SECTIONS块定义了输出文
     {
         . = ALIGN(8192);                        /* init_task_union作为swapper的task_struct，必须8K对齐起始 */
         *(.data.init_task)           
-    }                                          
+    }
+
+    . = ALIGN(4096);		                    
+    __init_begin = .;                           /* 以下是内核初始化代码段与数据段，直接从linux2.4链接脚本粘贴过来的，但是加入了加载地址指定 */
+    .text.init : AT(ADDR(.text.init) - 0xC0000000)
+    { 
+        *(.text.init) 
+    }
+    .data.init : AT(ADDR(.data.init) - 0xC0000000)
+    { 
+        *(.data.init) 
+    }
+    . = ALIGN(16);
+    __setup_start = .;
+    .setup.init : AT(ADDR(.setup.init) - 0xC0000000)
+    { 
+        *(.setup.init) 
+    }
+    __setup_end = .;
+    __initcall_start = .;
+    .initcall.init : AT(ADDR(.data.init_task) - 0xC0000000)
+    { 
+        *(.initcall.init) 
+    }
+    __initcall_end = .;
+    . = ALIGN(4096);
+    __init_end = .;
+
     PROVIDE( __bss_start = . );
 	.bss : AT(ADDR(.bss) - 0xC0000000)
 	{

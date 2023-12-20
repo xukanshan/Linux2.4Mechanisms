@@ -15,10 +15,13 @@ asm ("divb  %2\n"
 /* 用于测试和清除位于给定地址的特定位，两个参数：
 nr：一个整数，表示要测试和清除的位的在其内存区域中位的索引
 addr：指向要改变和测试的位所在的内存区域的起始地址的指针
-btrl 指令（Bit Test and Reset）用于测试并重置（清除）指定的位。它检查指定地址处的一个位（即一个特定的二进制位置），然后将该位设置为 0。
+btrl 指令（Bit Test and Reset）用于测试并重置（清除）指定的位。
+它检查指定地址处的一个位（即一个特定的二进制位置），然后将该位设置为 0。
 其第一个操作数是要操作的位的索引，第二个操作数是包含该位的地址
-sbbl 指令（Subtract with Borrow Long）执行的是带借位的长整型减法。它将第二个操作数和进位标志（Carry Flag）的值相减，然后从第一个操作数中减去这个结果
-sbbl %0,%0 实际上是一种巧妙的方法来将 oldbit 设置为 btrl 操作之前测试位的状态：如果该位之前是 1，btrl 会导致进位标志被设置，sbbl 随后会将 oldbit 设置为 1；
+sbbl 指令（Subtract with Borrow Long）执行的是带借位的长整型减法。
+它将第二个操作数和进位标志（Carry Flag）的值相减，然后从第一个操作数中减去这个结果
+sbbl %0,%0 实际上是一种巧妙的方法来将 oldbit 设置为 btrl 操作之前测试位的状态：
+如果该位之前是 1，btrl 会导致进位标志被设置，sbbl 随后会将 oldbit 设置为 1；
 如果该位之前是 0，进位标志不会被设置，sbbl 将 oldbit 设置为 0。oldbit获取的是sbbl的结果 */
 static __inline__ int test_and_clear_bit(int nr, volatile void *addr)
 {
@@ -79,7 +82,8 @@ addr：要测试的位所在内存区域的起始地址
 __builtin_constant_p 是 GCC 提供的一个内建函数，用于在编译时检查给定的参数是否是一个常量表达式。
 如果 nr 是一个编译时常量（编译过程中其值已经确定并且在整个程序执行期间不会改变的常量），
 表达式返回 true，否则返回 false。编译时常量与非常量对应两个处理函数主要是出于性能优化的考虑。
-constant_test_bit 是编译时常量对应处理函数。它通过简单的位运算（位移和位与操作）来测试位图中的位，这些操作在编译时就可以确定和优化，效率很高。
+constant_test_bit 是编译时常量对应处理函数。
+它通过简单的位运算（位移和位与操作）来测试位图中的位，这些操作在编译时就可以确定和优化，效率很高。
 variable_test_bit 是编译时常量对应处理函数。虽然使用内联汇编，但是运行效率不如constant_test_bit高。
 gcc -fno-builtin, 它会禁用对所有内建函数的优化，这些函数通常是标准库函数的特殊版本，例如 memcpy、strcpy 等,
 然而__builtin_xx 是特殊的内建函数，不是实现某个标准库函数的特定功能，所以-fno-builtin对其无效 */
@@ -95,6 +99,32 @@ static __inline__ void set_bit(int nr, volatile void *addr)
                          "btsl %1,%0"
                          : "=m"(ADDR)
                          : "Ir"(nr));
+}
+
+/* 设定内存中某一个比特为0，参数：
+nr：要设定的位相对于起始地址addr的偏移
+addr：要设定的位所在的内存区域起始地址 */
+static __inline__ void clear_bit(int nr, volatile void *addr)
+{
+    __asm__ __volatile__(LOCK_PREFIX
+                         "btrl %1,%0"
+                         : "=m"(ADDR)
+                         : "Ir"(nr));
+}
+
+/* 测试内存中某个比特，然后将其取反，btcl（是一种位测试并补码complement指令） ，
+用于测试并改变位，并将原始值放入cf中，参数：
+nr：要设定的位相对于起始地址addr的偏移
+addr：要设定的位所在的内存区域起始地址 */
+static __inline__ int test_and_change_bit(int nr, volatile void *addr)
+{
+    int oldbit;
+
+    __asm__ __volatile__(LOCK_PREFIX
+                         "btcl %2,%1\n\tsbbl %0,%0"
+                         : "=r"(oldbit), "=m"(ADDR)
+                         : "Ir"(nr) : "memory");
+    return oldbit;
 }
 
 #endif /* _ASM_I386_BITOPS_H */

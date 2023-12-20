@@ -80,7 +80,7 @@ typedef struct pglist_data
 {
     zone_t node_zones[MAX_NR_ZONES]; /* 这个数组表示节点上的内存区域，每个区域对应不同的内存类型（例如DMA、Normal、HighMem等） */
 
-    // /* 这是一个分区列表，用于内存分配。它会基于不同的分配标志（例如GFP_KERNEL、GFP_HIGHMEM等）提供合适的内存区域列表 */
+    /* 这是一个分区列表，用于内存分配。它会基于不同的分配标志（例如GFP_KERNEL、GFP_HIGHMEM等）提供合适的内存区域列表 */
     zonelist_t node_zonelists[NR_GFPINDEX];
 
     /* 指向该节点的页描述符数组的指针。页描述符是struct page类型的，它为节点上的每一页提供了一个描述。 */

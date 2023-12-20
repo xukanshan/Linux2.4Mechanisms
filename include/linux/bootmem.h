@@ -54,4 +54,7 @@ pgdat 参数是对应的内存节点数据结构，而 x 是要分配的字节�
 0作为预期分配地址*/
 #define alloc_bootmem_low(x) __alloc_bootmem((x), SMP_CACHE_BYTES, 0)
 
+/* mm/bootmem.c */
+extern unsigned long __init free_all_bootmem (void);
+
 #endif /* _LINUX_BOOTMEM_H */

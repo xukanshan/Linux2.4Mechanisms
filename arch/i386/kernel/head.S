@@ -220,6 +220,10 @@ ENTRY(pg1)                                  /* 内核使用的临时页表，映
 .org 0x4000                                 /* 全0页 */        
 ENTRY(empty_zero_page)
 
+.org 0x5000
+ENTRY(empty_bad_page)						/* 虽然我用不到这个页，但是还是要有，因为没有的话，实际上0页只是个标号，
+											其实际范围会覆盖掉后面的gdt_table */
+
 .data										/* 数据段从这里开始之前很多属于数据段的内容放到了代码段，是为了对内存布局精确控制 */
 ALIGN
 ENTRY(gdt_table)							/* gdt表，前12个是基本段描述符，后面是每个cpu都有的tss与ldt段描述符与2个空的段描述符 */

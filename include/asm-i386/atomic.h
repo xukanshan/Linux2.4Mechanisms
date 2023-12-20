@@ -31,4 +31,17 @@ static __inline__ void atomic_inc(atomic_t *v)
         : "m"(v->counter));
 }
 
+/* 将一个数原子-1，并且测试-1后是不是0，如果是就返回1，不是返回0。
+sete：set if equal 等价 "set if zero"，意思是如果之前的指令产生的结果使零标志被设置为 1，
+则将目标寄存器或内存位置设置为 1；否则设置为 0 */
+static __inline__ int atomic_dec_and_test(atomic_t *v)
+{
+    unsigned char c; /* 存储0标志 */
+    __asm__ __volatile__(
+        LOCK "decl %0; sete %1"
+        : "=m"(v->counter), "=qm"(c)
+        : "m"(v->counter) : "memory");
+    return c != 0;
+}
+
 #endif /* _ASM_I386_ATOMIC_H */

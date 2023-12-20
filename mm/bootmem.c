@@ -272,3 +272,55 @@ void *__init __alloc_bootmem_node(pg_data_t *pgdat, unsigned long size, unsigned
     BUG();
     return NULL;
 }
+
+/* 遍历 NUMA 节点的内存页，检查并释放在系统启动期间分配但现在不再需要的内存页，
+以及释放用于引导内存分配的位图本身。参数：
+pgdat:代表一个节点的内存
+返回：释放的总页面数
+注意：此函数调用了伙伴系统内存分配接口，会导致伙伴系统0阶上挂满4k页面 */
+static unsigned long __init free_all_bootmem_core(pg_data_t *pgdat)
+{
+    struct page *page = pgdat->node_mem_map; /* 指向该节点页描述符数组 */
+    bootmem_data_t *bdata = pgdat->bdata;    /* 指向该节点的引导内存数据结构 */
+    unsigned long i, count, total = 0;       /* i用于循环；count统计处理过的页面 ；总页计数器 total */
+    unsigned long idx;                       /* 存储引导内存分配器管理的页面数量 */
+
+    if (!bdata->node_bootmem_map) /* 如果引导内存分配器的位图不存在，报错 */
+        BUG();
+
+    count = 0; /* 初始化为0 */
+    /* 计算节点的引导内存分配器可分配的开始地址到最低页面帧号之间的页面数量 */
+    idx = bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT);
+    for (i = 0; i < idx; i++, page++) /* 循环遍历这些页面 */
+    {
+        if (!test_bit(i, bdata->node_bootmem_map))
+        {                            /* 进来if，说明位图中标识页面的位是0，也就是页面没有分配 */
+            count++;                 /* 处理过的页面 +1 */
+            ClearPageReserved(page); /* 清除页面的reserved位 */
+            set_page_count(page, 1); /* 设置页面计数为 1 */
+            __free_page(page);       /* 释放页面，会导致伙伴系统0阶上挂满4k页面 */
+        }
+    }
+    total += count; /* 更新总释放页面数 */
+
+    page = virt_to_page(bdata->node_bootmem_map); /* 得到引导内存分配器位图的page地址 */
+    count = 0;                                    /* 重新初始化 count */
+    /* 遍历引导内存分配器位图所占的页面 */
+    for (i = 0; i < ((bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT)) / 8 + PAGE_SIZE - 1) / PAGE_SIZE; i++, page++)
+    {
+        count++;                 /* 处理过的页面 +1 */
+        ClearPageReserved(page); /* 清除页面的reserved位 */
+        set_page_count(page, 1); /* 设置页面计数为 1 */
+        __free_page(page);       /* 释放页面，会导致伙伴系统0阶上挂满4k页面 */
+    }
+    total += count;                 /* 更新总释放页面数 */
+    bdata->node_bootmem_map = NULL; /* 将引导内存分配器位图置为空 */
+
+    return total; /* 返回释放总页面数量 */
+}
+
+/* 释放所有引导内存分配器分配的内存，以及释放用于引导内存分配的位图本身 */
+unsigned long __init free_all_bootmem(void)
+{
+    return (free_all_bootmem_core(&contig_page_data));
+}
